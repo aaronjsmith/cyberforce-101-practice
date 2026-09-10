@@ -1,0 +1,4275 @@
+/* MAT107 quiz UI — client-only static site */
+(function () {
+  const Q = window.QuizQuestions;
+  const P = window.QuizProgress;
+  const I18n = window.QuizI18n;
+
+  function t(key, vars) {
+    return I18n && I18n.t ? I18n.t(key, vars) : key;
+  }
+
+  function setMathText(el, text, rich, calcBrand) {
+    if (!el) return;
+    if (!text) {
+      el.textContent = "";
+      el.classList.remove("math-text", "math-rich", "calc-keys-hint");
+      return;
+    }
+    const MF = window.QuizMathFormat;
+    if (calcBrand && MF && MF.formatCalcHtml) {
+      el.innerHTML = MF.formatCalcHtml(text, calcBrand);
+      el.classList.add("math-text", "math-rich", "calc-keys-hint");
+      return;
+    }
+    if (rich && MF && MF.toRichHtml) {
+      el.innerHTML = MF.toRichHtml(text);
+      el.classList.add("math-text", "math-rich");
+      el.classList.remove("calc-keys-hint");
+      return;
+    }
+    if (MF && MF.toHtml) {
+      el.innerHTML = MF.toHtml(text);
+      el.classList.add("math-text");
+      el.classList.remove("math-rich", "calc-keys-hint");
+    } else {
+      el.textContent = text;
+      el.classList.remove("math-text", "math-rich", "calc-keys-hint");
+    }
+  }
+
+  function choiceRaw(btn) {
+    return (btn && btn.dataset && btn.dataset.choice) || btn.textContent;
+  }
+
+  function getCurrentAssessment() {
+    const course = window.Mat107Course;
+    const id = P && P.ASSESSMENT_ID;
+    if (!course || !id || !course.getAssessment) return null;
+    return course.getAssessment(id);
+  }
+
+  /** Prefer winter.* (or other assessment theme) strings when defined. */
+  function tTheme(key, vars) {
+    const a = getCurrentAssessment();
+    if (a && a.theme) {
+      const themed = a.theme + "." + key;
+      if (I18n && I18n.has && I18n.has(themed)) {
+        return t(themed, vars);
+      }
+    }
+    return t(key, vars);
+  }
+
+  /**
+   * Boss face emoji by fight state.
+   * kind: "live"|"idle" (default), "hit", "win", "dead"
+   */
+  function bossEmoji(kind) {
+    const a = getCurrentAssessment();
+    if (!a) {
+      if (kind === "win" || kind === "dead") return "💀";
+      if (kind === "hit") return "👹";
+      return "😈";
+    }
+    if (kind === "hit") return a.bossEmojiHit || "👹";
+    if (kind === "win") return a.bossEmojiWin || a.bossEmojiDead || "💀";
+    if (kind === "dead") return a.bossEmojiDead || a.bossEmojiWin || "💀";
+    return a.bossEmoji || "😈";
+  }
+
+  if (!Q || !P) {
+    document.getElementById("q-prompt").textContent = t("load_fail");
+    return;
+  }
+
+  const state = {
+    mode: "smart",
+    fullQuestion: null,
+    publicQ: null,
+    answered: false,
+    retryPhase: false,
+    lastExpected: "",
+    hintsUsed: 0,
+    lastTopic: null,
+    clarifyShown: false,
+    clarifyAiShown: false,
+    /** After a miss, serve a remix of the same generator next. */
+    remixAfterFail: false,
+    /** Question to remix after a boss miss / retreat modal. */
+    pendingBossRemix: null,
+    /** After a miss modal, stay in the fight and remix. */
+    bossContinueAfterMiss: false,
+    /** Course week focus for Nourish and Strengthen (weeks12 | weeks34 | weeks57). */
+    nourishWeekId: null,
+    boss: {
+      active: false,
+      queue: [],
+      index: 0,
+      status: null, // "running" | "won" | "failed"
+      real: false,
+    },
+  };
+
+  const els = {
+    topicList: document.getElementById("topic-list"),
+    finalBossBtn: document.getElementById("btn-final-boss"),
+    bossFace: document.getElementById("boss-face"),
+    prompt: document.getElementById("q-prompt"),
+    topic: document.getElementById("q-topic"),
+    hint1: document.getElementById("q-hint1"),
+    hint2: document.getElementById("q-hint2"),
+    hint3ti: document.getElementById("q-hint3-ti"),
+    hint3casio: document.getElementById("q-hint3-casio"),
+    hint3excel: document.getElementById("q-hint3-excel"),
+    hint1Btn: document.getElementById("btn-hint1"),
+    hint2Btn: document.getElementById("btn-hint2"),
+    hint3tiBtn: document.getElementById("btn-hint3-ti"),
+    hint3casioBtn: document.getElementById("btn-hint3-casio"),
+    hint3excelBtn: document.getElementById("btn-hint3-excel"),
+    figure: document.getElementById("q-figure"),
+    choices: document.getElementById("q-choices"),
+    form: document.getElementById("q-form"),
+    singleField: document.getElementById("q-single-field"),
+    multiFields: document.getElementById("q-multi-fields"),
+    input: document.getElementById("q-input"),
+    unit: document.getElementById("q-unit"),
+    mathInsert: document.getElementById("math-insert"),
+    check: document.getElementById("btn-check"),
+    feedback: document.getElementById("feedback"),
+    next: document.getElementById("btn-next"),
+    skip: document.getElementById("btn-skip"),
+    remix: document.getElementById("btn-remix"),
+    reset: document.getElementById("btn-reset"),
+    resetModal: document.getElementById("reset-progress-modal"),
+    resetTopicList: document.getElementById("reset-topic-list"),
+    resetTopicBtn: document.getElementById("reset-progress-topic"),
+    resetAllBtn: document.getElementById("reset-progress-all"),
+    resetCancel: document.getElementById("reset-progress-cancel"),
+    resetClose: document.getElementById("reset-progress-close"),
+    resetBackdrop: document.getElementById("reset-progress-backdrop"),
+    save: document.getElementById("btn-save"),
+    load: document.getElementById("btn-load"),
+    progressFile: document.getElementById("progress-file"),
+    accuracy: document.getElementById("stat-accuracy"),
+    streak: document.getElementById("stat-streak"),
+    total: document.getElementById("stat-total"),
+    mastery: null,
+    masteryPie: document.getElementById("mastery-pie"),
+    clarifyBtn: document.getElementById("btn-clarify"),
+    clarifyPanel: document.getElementById("q-clarify"),
+    teachPanel: document.getElementById("q-teach"),
+    calcOpen: document.getElementById("btn-calc-open"),
+    calcModal: document.getElementById("calc-modal"),
+    calcClose: document.getElementById("btn-calc-close"),
+    calcDisplay: document.getElementById("calc-display"),
+    calcKeys: document.getElementById("calc-keys"),
+    excelOpen: document.getElementById("btn-excel-open"),
+    excelModal: document.getElementById("excel-modal"),
+    excelClose: document.getElementById("btn-excel-close"),
+    excelNameBox: document.getElementById("excel-name-box"),
+    excelFormula: document.getElementById("excel-formula-input"),
+    excelTip: document.getElementById("excel-tip"),
+    excelGrid: document.getElementById("excel-scratch-grid"),
+    bossInviteModal: document.getElementById("boss-invite-modal"),
+    bossInviteMsg: document.getElementById("boss-invite-msg"),
+    bossInviteFight: document.getElementById("boss-invite-fight"),
+    bossInviteLater: document.getElementById("boss-invite-later"),
+    bossInviteClose: document.getElementById("boss-invite-close"),
+    bossInviteBackdrop: document.getElementById("boss-invite-backdrop"),
+    bossRetreatModal: document.getElementById("boss-retreat-modal"),
+    bossRetreatMsg: document.getElementById("boss-retreat-msg"),
+    bossRetreatOk: document.getElementById("boss-retreat-ok"),
+    bossRetreatClose: document.getElementById("boss-retreat-close"),
+    bossRetreatBackdrop: document.getElementById("boss-retreat-backdrop"),
+    nourishBtn: document.getElementById("btn-nourish"),
+    nourishWeekModal: document.getElementById("nourish-week-modal"),
+    nourishWeekChoices: document.getElementById("nourish-week-choices"),
+    nourishWeekCancel: document.getElementById("nourish-week-cancel"),
+    nourishWeekClose: document.getElementById("nourish-week-close"),
+    nourishWeekBackdrop: document.getElementById("nourish-week-backdrop"),
+    notes: document.getElementById("notes-area"),
+    notesStatus: document.getElementById("notes-status"),
+    notesSortAsc: document.getElementById("notes-sort-asc"),
+    notesSortDesc: document.getElementById("notes-sort-desc"),
+    notesSum: document.getElementById("notes-sum"),
+    notesUnique: document.getElementById("notes-unique"),
+  };
+
+  const PIE_COLORS = [
+    "#0f6e56",
+    "#1d4ed8",
+    "#b45309",
+    "#7c3aed",
+    "#0e7490",
+    "#be123c",
+    "#4d7c0f",
+    "#c2410c",
+    "#0369a1",
+    "#a21caf",
+    "#15803d",
+    "#9333ea",
+  ];
+
+  function polar(cx, cy, r, deg) {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+  }
+
+  function sectorPath(cx, cy, rInner, rOuter, a0, a1) {
+    if (a1 - a0 < 0.01) return "";
+    const large = a1 - a0 > 180 ? 1 : 0;
+    const [x0, y0] = polar(cx, cy, rOuter, a0);
+    const [x1, y1] = polar(cx, cy, rOuter, a1);
+    if (rInner <= 0.5) {
+      return (
+        "M" +
+        cx +
+        "," +
+        cy +
+        " L" +
+        x0.toFixed(2) +
+        "," +
+        y0.toFixed(2) +
+        " A" +
+        rOuter +
+        "," +
+        rOuter +
+        " 0 " +
+        large +
+        " 1 " +
+        x1.toFixed(2) +
+        "," +
+        y1.toFixed(2) +
+        " Z"
+      );
+    }
+    const [xi0, yi0] = polar(cx, cy, rInner, a0);
+    const [xi1, yi1] = polar(cx, cy, rInner, a1);
+    return (
+      "M" +
+      x0.toFixed(2) +
+      "," +
+      y0.toFixed(2) +
+      " A" +
+      rOuter +
+      "," +
+      rOuter +
+      " 0 " +
+      large +
+      " 1 " +
+      x1.toFixed(2) +
+      "," +
+      y1.toFixed(2) +
+      " L" +
+      xi1.toFixed(2) +
+      "," +
+      yi1.toFixed(2) +
+      " A" +
+      rInner +
+      "," +
+      rInner +
+      " 0 " +
+      large +
+      " 0 " +
+      xi0.toFixed(2) +
+      "," +
+      yi0.toFixed(2) +
+      " Z"
+    );
+  }
+
+  function renderMasteryPie(p) {
+    if (!els.masteryPie) return;
+    const entries = Object.entries(p.topics);
+    const n = entries.length || 1;
+    const size = 220;
+    const cx = size / 2;
+    const cy = size / 2;
+    const rOuter = 96;
+    const rHole = 46;
+    const gap = n > 1 ? 1.2 : 0;
+    const sweep = 360 / n;
+    const overall = p.overall_mastery != null ? p.overall_mastery : 0;
+
+    let slices = "";
+    let rows = "";
+    entries.forEach(([key, info], i) => {
+      const color = PIE_COLORS[i % PIE_COLORS.length];
+      const a0 = i * sweep + gap / 2;
+      const a1 = (i + 1) * sweep - gap / 2;
+      const frac = Math.max(0, Math.min(1, (info.mastery || 0) / 100));
+      const pct = Math.round(info.mastery || 0);
+      const barCls = info.mastered ? "full" : pct >= 50 ? "mid" : "low";
+
+      slices +=
+        '<path d="' +
+        sectorPath(cx, cy, rHole, rOuter, a0, a1) +
+        '" fill="' +
+        color +
+        '" fill-opacity="0.18" stroke="#fff" stroke-width="1"/>';
+      if (frac > 0.02) {
+        const rFilled = rHole + (rOuter - rHole) * frac;
+        slices +=
+          '<path d="' +
+          sectorPath(cx, cy, rHole, rFilled, a0, a1) +
+          '" fill="' +
+          color +
+          '" stroke="#fff" stroke-width="0.75">' +
+          "<title>" +
+          info.label +
+          ": " +
+          info.unaided_correct +
+          "/" +
+          info.unaided_needed +
+          "</title></path>";
+      }
+
+      rows +=
+        '<li class="mastery-topic' +
+        (info.mastered ? " mastered" : "") +
+        '" data-topic="' +
+        key +
+        '" title="' +
+        info.label +
+        '">' +
+        '<div class="mastery-topic-head">' +
+        '<i style="background:' +
+        color +
+        '"></i>' +
+        "<span>" +
+        (info.mastered ? "✓ " : "") +
+        info.label +
+        "</span>" +
+        "<em>" +
+        info.unaided_correct +
+        "/" +
+        info.unaided_needed +
+        " · " +
+        pct +
+        "%</em>" +
+        "</div>" +
+        '<div class="bar ' +
+        barCls +
+        '"><i style="width:' +
+        pct +
+        "%;background:" +
+        color +
+        '"></i></div>' +
+        "</li>";
+    });
+
+    els.masteryPie.innerHTML =
+      '<div class="pie-chart-wrap">' +
+      '<svg class="mastery-pie-svg" viewBox="0 0 ' +
+      size +
+      " " +
+      size +
+      '" role="img" aria-label="' +
+      t("mastery_overall_aria", { pct: overall }) +
+      '">' +
+      slices +
+      '<circle cx="' +
+      cx +
+      '" cy="' +
+      cy +
+      '" r="' +
+      (rHole - 2) +
+      '" fill="#fffcf6"/>' +
+      '<text x="' +
+      cx +
+      '" y="' +
+      (cy - 6) +
+      '" text-anchor="middle" class="pie-pct">' +
+      overall +
+      "%</text>" +
+      '<text x="' +
+      cx +
+      '" y="' +
+      (cy + 14) +
+      '" text-anchor="middle" class="pie-sub">' +
+      t("mastery_overall") +
+      "</text>" +
+      "</svg>" +
+      '<p class="pie-summary">' +
+      t("mastery_pie_summary", {
+        mastered: p.mastered_topics,
+        total: p.topic_count,
+      }) +
+      "</p>" +
+      "</div>" +
+      '<ul class="mastery-topic-list">' +
+      rows +
+      "</ul>";
+
+    const struggleTop =
+      (p.struggle && p.struggle.top) ||
+      (P.getTopStruggleTopics ? P.getTopStruggleTopics(3) : []);
+    if (struggleTop && struggleTop.length) {
+      const labels = struggleTop
+        .slice(0, 3)
+        .map(function (row) {
+          return escapeHtml(row.label);
+        })
+        .join(" · ");
+      els.masteryPie.innerHTML +=
+        '<div class="struggle-panel" aria-live="polite">' +
+        '<p class="struggle-panel-title">' +
+        escapeHtml(t("struggle_needs_work")) +
+        "</p>" +
+        '<p class="struggle-panel-topics">' +
+        labels +
+        "</p>" +
+        '<p class="struggle-panel-note">' +
+        escapeHtml(t("struggle_needs_work_note")) +
+        "</p>" +
+        "</div>";
+    }
+
+    els.masteryPie.querySelectorAll(".mastery-topic").forEach((item) => {
+      item.addEventListener("click", () => {
+        const key = item.getAttribute("data-topic");
+        if (!key) return;
+        state.mode = key;
+        setModeButtons();
+        loadQuestion();
+      });
+    });
+  }
+
+  function setModeButtons() {
+    document.querySelectorAll(".topic[data-topic]").forEach((btn) => {
+      const topic = btn.dataset.topic;
+      const active =
+        (state.mode === "all" && topic === "all") ||
+        (state.mode === "smart" && topic === "smart") ||
+        (state.mode === "teachme" && topic === "teachme") ||
+        (state.mode === "nourish" && topic === "nourish") ||
+        (state.mode === "flashcards" && topic === "flashcards") ||
+        (state.mode === "finalboss" && topic === "finalboss") ||
+        state.mode === topic;
+      btn.classList.toggle("active", active);
+    });
+    updateNourishButton();
+  }
+
+  function updateFinalBossButton(p) {
+    const btn = els.finalBossBtn;
+    if (!btn) return;
+    const ready = Boolean(p && p.all_mastered);
+    const inFight = bossFightActive();
+    const realFight = Boolean(
+      (state.boss && state.boss.real) || (inFight && ready)
+    );
+    btn.disabled = false;
+    btn.classList.toggle("cleared", Boolean(p && p.final_boss_cleared && ready));
+    // Never mark the button as practice during a real (all-mastered) fight.
+    btn.classList.toggle("practice", !ready && !realFight);
+    if (inFight && realFight) {
+      btn.textContent = bossEmoji("live") + " " + tTheme("mode_finalboss_fighting");
+    } else if (inFight) {
+      btn.textContent = bossEmoji("live") + " " + tTheme("mode_finalboss_practice_active");
+    } else if (p && p.final_boss_cleared && ready) {
+      btn.textContent = bossEmoji("dead") + " " + tTheme("mode_finalboss_cleared");
+    } else if (ready) {
+      btn.textContent = bossEmoji("live") + " " + tTheme("mode_finalboss_ready");
+    } else {
+      btn.textContent = bossEmoji("live") + " " + tTheme("mode_finalboss_practice");
+    }
+  }
+
+  let bossFaceTimer = null;
+  let bossAudioCtx = null;
+
+  function getBossAudioCtx() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!bossAudioCtx) bossAudioCtx = new AC();
+    return bossAudioCtx;
+  }
+
+  /** Short 8-bit square-wave "hit" blip. */
+  function playBossHitSound() {
+    try {
+      const ctx = getBossAudioCtx();
+      if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume();
+      const now = ctx.currentTime;
+      // Descending square chirp — classic console hit.
+      const notes = [
+        { freq: 380, at: 0, dur: 0.05 },
+        { freq: 190, at: 0.045, dur: 0.07 },
+        { freq: 95, at: 0.1, dur: 0.1 },
+      ];
+      notes.forEach(function (n) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(n.freq, now + n.at);
+        const t0 = now + n.at;
+        const t1 = t0 + n.dur;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.14, t0 + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t1 + 0.02);
+      });
+    } catch (e) {
+      /* ignore audio failures */
+    }
+  }
+
+  function setBossFace(emoji, mode) {
+    if (!els.bossFace) return;
+    if (bossFaceTimer) {
+      clearTimeout(bossFaceTimer);
+      bossFaceTimer = null;
+    }
+    els.bossFace.hidden = false;
+    els.bossFace.textContent = emoji;
+    els.bossFace.classList.remove("live", "hit", "dead");
+    els.bossFace.classList.add(mode || "live");
+    els.bossFace.setAttribute("aria-hidden", "false");
+  }
+
+  function hideBossFace() {
+    if (!els.bossFace) return;
+    if (bossFaceTimer) {
+      clearTimeout(bossFaceTimer);
+      bossFaceTimer = null;
+    }
+    els.bossFace.hidden = true;
+    els.bossFace.classList.remove("live", "hit", "dead");
+    els.bossFace.textContent = bossEmoji("live");
+    els.bossFace.setAttribute("aria-hidden", "true");
+  }
+
+  function bossFightActive() {
+    return (
+      state.mode === "finalboss" &&
+      state.boss &&
+      state.boss.active &&
+      state.boss.status === "running"
+    );
+  }
+
+  /** Boss takes a hit: hit emoji for 2s, then back to live only while the fight continues. */
+  function bossTakeDamage(onDone) {
+    if (!bossFightActive()) {
+      hideBossFace();
+      return;
+    }
+    playBossHitSound();
+    setBossFace(bossEmoji("hit"), "hit");
+    bossFaceTimer = setTimeout(function () {
+      if (!bossFightActive()) {
+        hideBossFace();
+        return;
+      }
+      if (typeof onDone === "function") {
+        onDone();
+        return;
+      }
+      setBossFace(bossEmoji("live"), "live");
+    }, 2000);
+  }
+
+  function persistBossRun() {
+    if (
+      state.boss &&
+      state.boss.active &&
+      state.boss.status === "running" &&
+      Array.isArray(state.boss.queue) &&
+      state.boss.queue.length
+    ) {
+      P.saveBossRun({
+        active: true,
+        queue: state.boss.queue.slice(),
+        index: state.boss.index,
+        status: "running",
+        real: Boolean(state.boss.real),
+      });
+    } else if (P.clearBossRun) {
+      P.clearBossRun();
+    }
+  }
+
+  function restoreBossRunFromStorage() {
+    const saved = P.getBossRun && P.getBossRun();
+    if (!saved) return false;
+    state.boss = {
+      active: true,
+      queue: saved.queue.slice(),
+      index: saved.index,
+      status: "running",
+      real: Boolean(saved.real),
+    };
+    return true;
+  }
+
+  function startBossRun() {
+    const real = Boolean(P.allTopicsMastered && P.allTopicsMastered());
+    state.boss = {
+      active: true,
+      queue: P.shuffleTopics(),
+      index: 0,
+      status: "running",
+      real: real,
+    };
+    persistBossRun();
+    setBossFace(bossEmoji("live"), "live");
+    updateFinalBossButton(P.getProgressView());
+    if (P.clearBossDrillTopic) P.clearBossDrillTopic();
+  }
+
+  function failBoss() {
+    // Abandon the run (e.g. Skip) — leave the fight and train the missed skill.
+    const missedQ = state.fullQuestion;
+    const missedTopic =
+      (missedQ && missedQ.topic) ||
+      (state.boss.queue && state.boss.queue[state.boss.index]) ||
+      null;
+    const topicLabel =
+      missedTopic && Q.TOPICS[missedTopic] ? Q.TOPICS[missedTopic] : tTheme("mode_finalboss");
+    const real = Boolean(state.boss.real);
+    let penalty = { dropped_to: 9, topic: missedTopic, topics_affected: 0 };
+    if (real) {
+      penalty = P.penalizeBossFail(missedTopic);
+    }
+    state.boss.status = "failed";
+    state.boss.active = false;
+    if (P.clearBossRun) P.clearBossRun();
+    state.answered = true;
+    state.pendingBossRemix = missedQ;
+    state.bossContinueAfterMiss = false;
+    if (missedTopic && P.setBossDrillTopic) P.setBossDrillTopic(missedTopic);
+    hideBossFace();
+    lockInputs();
+    hideHintControls();
+    els.skip.hidden = true;
+    if (els.remix) els.remix.hidden = true;
+    els.check.hidden = true;
+    els.next.hidden = true;
+    els.feedback.hidden = true;
+    state.mode = missedTopic && Q.TOPICS[missedTopic] ? missedTopic : "smart";
+    els.topic.textContent =
+      missedTopic && Q.TOPICS[missedTopic] ? Q.TOPICS[missedTopic] : t("mode_smart");
+    setModeButtons();
+    refreshProgress();
+    openBossRetreatModal({
+      continueFight: false,
+      topicLabel: topicLabel,
+      real: real,
+      progress: penalty.dropped_to + "/10",
+    });
+  }
+
+  /** Wrong answer / hint in boss: knock 1 mastery, stay in fight, remix same question. */
+  function bossMissAndRemix() {
+    const missedQ = state.fullQuestion;
+    const missedTopic =
+      (missedQ && missedQ.topic) ||
+      (state.boss.queue && state.boss.queue[state.boss.index]) ||
+      null;
+    const topicLabel =
+      missedTopic && Q.TOPICS[missedTopic] ? Q.TOPICS[missedTopic] : tTheme("mode_finalboss");
+    const penalty =
+      P.penalizeBossMiss && missedTopic
+        ? P.penalizeBossMiss(missedTopic)
+        : { dropped_to: 0, topics_affected: 0 };
+    state.answered = true;
+    state.pendingBossRemix = missedQ;
+    state.bossContinueAfterMiss = true;
+    persistBossRun();
+    lockInputs();
+    hideHintControls();
+    els.skip.hidden = true;
+    if (els.remix) els.remix.hidden = true;
+    els.check.hidden = true;
+    els.next.hidden = true;
+    els.feedback.hidden = true;
+    refreshProgress();
+    openBossRetreatModal({
+      continueFight: true,
+      topicLabel: topicLabel,
+      progress: penalty.dropped_to + "/10",
+    });
+  }
+
+  let bossRetreatOpen = false;
+
+  function openBossRetreatModal(opts) {
+    if (!els.bossRetreatModal) {
+      finishBossRetreat();
+      return;
+    }
+    opts = opts || {};
+    const titleEl = document.getElementById("boss-retreat-title");
+    if (titleEl) {
+      titleEl.textContent = opts.continueFight
+        ? t("boss_miss_title")
+        : t("boss_retreat_title");
+    }
+    if (els.bossRetreatMsg) {
+      if (opts.continueFight) {
+        els.bossRetreatMsg.textContent = tTheme("boss_miss_msg", {
+          topic: opts.topicLabel || "",
+          progress: opts.progress || "—",
+        });
+      } else {
+        els.bossRetreatMsg.textContent = opts.real
+          ? tTheme("boss_retreat_msg_real", {
+              topic: opts.topicLabel || "",
+              progress: opts.progress || "9/10",
+            })
+          : tTheme("boss_retreat_msg", { topic: opts.topicLabel || "" });
+      }
+    }
+    if (els.bossRetreatOk) {
+      els.bossRetreatOk.textContent = opts.continueFight
+        ? t("boss_miss_ok")
+        : t("boss_retreat_ok");
+    }
+    const face = els.bossRetreatModal.querySelector(".boss-invite-face");
+    if (face) face.textContent = opts.continueFight ? bossEmoji("hit") : "🏃";
+    bossRetreatOpen = true;
+    els.bossRetreatModal.hidden = false;
+    const focusBtn = els.bossRetreatOk;
+    if (focusBtn) {
+      setTimeout(function () {
+        focusBtn.focus();
+      }, 0);
+    }
+  }
+
+  function finishBossRetreat() {
+    if (els.bossRetreatModal) els.bossRetreatModal.hidden = true;
+    bossRetreatOpen = false;
+    const missedQ = state.pendingBossRemix;
+    const continueFight = Boolean(state.bossContinueAfterMiss);
+    state.pendingBossRemix = null;
+    state.bossContinueAfterMiss = false;
+    state.remixAfterFail = false;
+
+    if (continueFight && state.boss && state.boss.active && state.boss.status === "running") {
+      if (Q.setBossTheme) Q.setBossTheme(true);
+      setModeButtons();
+      updateFinalBossButton(P.getProgressView());
+      if (missedQ && typeof missedQ._gen === "function") {
+        state.fullQuestion = missedQ;
+        loadRemix();
+        return;
+      }
+      loadQuestion();
+      return;
+    }
+
+    if (Q.setBossTheme) Q.setBossTheme(false);
+    setModeButtons();
+    refreshProgress();
+    if (missedQ && typeof missedQ._gen === "function") {
+      state.fullQuestion = missedQ;
+      loadRemix();
+      return;
+    }
+    loadQuestion();
+  }
+
+  function winBoss() {
+    const real = Boolean(state.boss.real);
+    const already = Boolean(P.getProgressView().final_boss_cleared);
+    if (real) {
+      P.markFinalBossCleared();
+    }
+    state.boss.status = "won";
+    state.boss.active = false;
+    if (P.clearBossRun) P.clearBossRun();
+    state.answered = true;
+    setBossFace(bossEmoji("win"), "dead");
+    bossFaceTimer = setTimeout(function () {
+      if (els.bossFace && !els.bossFace.hidden) {
+        setBossFace(bossEmoji("dead"), "dead");
+      }
+      bossFaceTimer = setTimeout(hideBossFace, 700);
+    }, 900);
+    lockInputs();
+    hideHintControls();
+    els.skip.hidden = true;
+    if (els.remix) els.remix.hidden = true;
+    els.check.hidden = true;
+    els.next.hidden = false;
+    els.feedback.hidden = false;
+    els.feedback.className = "feedback ok";
+    if (real) {
+      els.feedback.textContent = already ? tTheme("boss_win_again") : tTheme("boss_win");
+      els.topic.textContent = tTheme("mode_finalboss_cleared");
+    } else {
+      els.feedback.textContent = tTheme("boss_win_practice");
+      els.topic.textContent = tTheme("mode_finalboss");
+    }
+    if (P.clearBossDrillTopic) P.clearBossDrillTopic();
+    refreshProgress();
+  }
+
+  function advanceBossAfterCorrect() {
+    state.boss.index += 1;
+    if (state.boss.index >= state.boss.queue.length) {
+      if (P.clearBossRun) P.clearBossRun();
+      playBossHitSound();
+      setBossFace(bossEmoji("hit"), "hit");
+      bossFaceTimer = setTimeout(function () {
+        winBoss();
+      }, 2000);
+      return;
+    }
+    persistBossRun();
+    els.feedback.hidden = false;
+    els.feedback.className = "feedback ok";
+    els.feedback.textContent = tTheme("boss_ok", {
+      current: state.boss.index,
+      total: state.boss.queue.length,
+    });
+    els.next.hidden = true;
+    bossTakeDamage(function () {
+      if (!bossFightActive()) return;
+      loadQuestion();
+    });
+  }
+
+  function refreshProgress() {
+    const p = P.getProgressView();
+    els.accuracy.textContent = p.total_attempted ? `${p.accuracy}%` : "—";
+    els.streak.textContent = p.streak;
+    els.total.textContent = p.total_attempted;
+
+    function topicButtonHtml(info) {
+      const mark = info.mastered ? "✓ " : "";
+      const learned = info.teach_learned
+        ? '<span class="learned-badge">' + escapeHtml(t("badge_learned")) + "</span>"
+        : "";
+      return (
+        mark +
+        escapeHtml(info.label) +
+        learned +
+        '<span class="m">' +
+        info.unaided_correct +
+        "/" +
+        info.unaided_needed +
+        "</span>"
+      );
+    }
+
+    const existing = els.topicList.querySelectorAll(".topic[data-key]");
+    if (existing.length === 0) {
+      Object.entries(p.topics).forEach(([key, info]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "topic" + (info.teach_learned ? " topic-learned" : "");
+        btn.dataset.topic = key;
+        btn.dataset.key = key;
+        btn.innerHTML = topicButtonHtml(info);
+        btn.addEventListener("click", () => {
+          state.mode = key;
+          setModeButtons();
+          loadQuestion();
+        });
+        els.topicList.appendChild(btn);
+      });
+    } else {
+      existing.forEach((btn) => {
+        const info = p.topics[btn.dataset.key];
+        if (info) {
+          btn.classList.toggle("topic-learned", Boolean(info.teach_learned));
+          btn.innerHTML = topicButtonHtml(info);
+        }
+      });
+    }
+
+    renderMasteryPie(p);
+    setModeButtons();
+    updateFinalBossButton(p);
+  }
+
+  const BOSS_INVITE_KEY = "mat107-boss-invite-dismissed";
+  const NOURISH_WEEK_KEY = "mat107-nourish-week";
+  let bossInviteOpen = false;
+  let nourishWeekOpen = false;
+  let nourishModeBeforePrompt = "smart";
+
+  function nourishWeekLabel(weekId) {
+    const course = window.Mat107Course;
+    const groups =
+      course && course.practiceWeekGroups
+        ? course.practiceWeekGroups()
+        : (course && course.WEEK_GROUPS) || [];
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].id === weekId) {
+        return t(groups[i].titleKey);
+      }
+    }
+    return weekId || "";
+  }
+
+  function updateNourishButton() {
+    const btn = els.nourishBtn;
+    if (!btn) return;
+    if (state.mode === "nourish" && state.nourishWeekId) {
+      btn.textContent = t("mode_nourish_active", {
+        week: nourishWeekLabel(state.nourishWeekId),
+      });
+    } else {
+      btn.textContent = t("mode_nourish");
+    }
+  }
+
+  function readStoredNourishWeek() {
+    try {
+      const id = sessionStorage.getItem(NOURISH_WEEK_KEY);
+      if (!id) return null;
+      const course = window.Mat107Course;
+      const topics =
+        course && course.topicsForWeek ? course.topicsForWeek(id) : [];
+      return topics.length ? id : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function persistNourishWeek(weekId) {
+    try {
+      if (weekId) sessionStorage.setItem(NOURISH_WEEK_KEY, weekId);
+      else sessionStorage.removeItem(NOURISH_WEEK_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function closeNourishWeekModal(restoreMode) {
+    if (!nourishWeekOpen) return;
+    nourishWeekOpen = false;
+    if (els.nourishWeekModal) els.nourishWeekModal.hidden = true;
+    if (!restoreMode) return;
+    if (!state.nourishWeekId) {
+      state.mode = nourishModeBeforePrompt || "smart";
+    }
+    setModeButtons();
+    loadQuestion();
+  }
+
+  function selectNourishWeek(weekId) {
+    if (!weekId) return;
+    state.nourishWeekId = weekId;
+    persistNourishWeek(weekId);
+    state.mode = "nourish";
+    nourishWeekOpen = false;
+    if (els.nourishWeekModal) els.nourishWeekModal.hidden = true;
+    setModeButtons();
+    els.feedback.hidden = false;
+    els.feedback.className = "feedback ok";
+    let msg = t("nourish_started", {
+      week: nourishWeekLabel(weekId),
+    });
+    const struggles = P.getTopStruggleTopics
+      ? P.getTopStruggleTopics(2, weekId)
+      : [];
+    if (struggles.length) {
+      msg +=
+        " " +
+        t("nourish_struggle_focus", {
+          topics: struggles
+            .map(function (row) {
+              return row.label;
+            })
+            .join(", "),
+        });
+    } else {
+      msg += " " + t("nourish_struggle_learning");
+    }
+    els.feedback.textContent = msg;
+    loadQuestion();
+  }
+
+  function openNourishWeekModal() {
+    if (!els.nourishWeekModal || !els.nourishWeekChoices) return;
+    const course = window.Mat107Course;
+    const weeks =
+      course && course.practiceWeekGroups
+        ? course.practiceWeekGroups()
+        : ((course && course.WEEK_GROUPS) || []).filter(function (w) {
+            return w.id !== "overview";
+          });
+    els.nourishWeekChoices.innerHTML = "";
+    weeks.forEach(function (week) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "nourish-week-btn";
+      if (week.id === state.nourishWeekId) btn.classList.add("selected");
+      btn.dataset.weekId = week.id;
+      const title = document.createElement("span");
+      title.className = "nourish-week-btn-title";
+      title.textContent = t(week.titleKey);
+      btn.appendChild(title);
+      if (week.blurbKey) {
+        const blurb = document.createElement("span");
+        blurb.className = "nourish-week-btn-blurb";
+        blurb.textContent = t(week.blurbKey);
+        btn.appendChild(blurb);
+      }
+      const struggles = P.getTopStruggleTopics
+        ? P.getTopStruggleTopics(2, week.id)
+        : [];
+      if (struggles.length) {
+        const focus = document.createElement("span");
+        focus.className = "nourish-week-btn-struggle";
+        focus.textContent = t("nourish_week_struggle", {
+          topics: struggles
+            .map(function (row) {
+              return row.label;
+            })
+            .join(", "),
+        });
+        btn.appendChild(focus);
+      }
+      btn.addEventListener("click", function () {
+        selectNourishWeek(week.id);
+      });
+      els.nourishWeekChoices.appendChild(btn);
+    });
+    nourishWeekOpen = true;
+    els.nourishWeekModal.hidden = false;
+    const first = els.nourishWeekChoices.querySelector("button");
+    if (first) {
+      setTimeout(function () {
+        first.focus();
+      }, 0);
+    }
+  }
+
+  function promptNourishWeek() {
+    nourishModeBeforePrompt =
+      state.mode && state.mode !== "nourish" ? state.mode : "smart";
+    state.mode = "nourish";
+    setModeButtons();
+    openNourishWeekModal();
+  }
+
+  function dismissBossInvite() {
+    if (!bossInviteOpen) return;
+    bossInviteOpen = false;
+    if (els.bossInviteModal) els.bossInviteModal.hidden = true;
+    try {
+      sessionStorage.setItem(BOSS_INVITE_KEY, "1");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function acceptBossInvite() {
+    if (!bossInviteOpen) return;
+    bossInviteOpen = false;
+    if (els.bossInviteModal) els.bossInviteModal.hidden = true;
+    const p = P.getProgressView();
+    state.mode = "finalboss";
+    state.boss = {
+      active: false,
+      queue: [],
+      index: 0,
+      status: null,
+      real: false,
+    };
+    setModeButtons();
+    updateFinalBossButton(p);
+    loadQuestion();
+  }
+
+  function openBossInviteModal() {
+    if (!els.bossInviteModal) return;
+    if (els.bossInviteMsg) {
+      els.bossInviteMsg.textContent = tTheme("boss_invite_mastered");
+    }
+    bossInviteOpen = true;
+    els.bossInviteModal.hidden = false;
+    const focusBtn = els.bossInviteFight || els.bossInviteLater;
+    if (focusBtn) {
+      setTimeout(function () {
+        focusBtn.focus();
+      }, 0);
+    }
+  }
+
+  function maybePromptBossFight(p) {
+    if (bossInviteOpen) return;
+    if (state.mode === "finalboss" && state.boss && state.boss.active) return;
+    p = p || P.getProgressView();
+    if (!p || !p.all_mastered) {
+      try {
+        sessionStorage.removeItem(BOSS_INVITE_KEY);
+      } catch (e) {
+        /* ignore */
+      }
+      return;
+    }
+    try {
+      if (sessionStorage.getItem(BOSS_INVITE_KEY) === "1") return;
+    } catch (e) {
+      /* ignore */
+    }
+    openBossInviteModal();
+  }
+
+  function hideHintControls() {
+    els.hint1Btn.hidden = true;
+    els.hint2Btn.hidden = true;
+    els.hint3tiBtn.hidden = true;
+    els.hint3casioBtn.hidden = true;
+    if (els.hint3excelBtn) els.hint3excelBtn.hidden = true;
+  }
+
+  function showCalcButtons(openStyle) {
+    const hasTi = Boolean(els.hint3ti.textContent);
+    const hasCasio = Boolean(els.hint3casio.textContent);
+    const hasExcel = Boolean(els.hint3excel && els.hint3excel.textContent);
+    if (hasTi) {
+      els.hint3tiBtn.hidden = false;
+      const opened = !els.hint3ti.hidden;
+      els.hint3tiBtn.disabled = opened;
+      els.hint3tiBtn.textContent = opened
+        ? t("btn_hint3_ti_used")
+        : openStyle
+          ? t("btn_hint3_ti_open")
+          : t("btn_hint3_ti");
+    } else {
+      els.hint3tiBtn.hidden = true;
+    }
+    if (hasCasio) {
+      els.hint3casioBtn.hidden = false;
+      const opened = !els.hint3casio.hidden;
+      els.hint3casioBtn.disabled = opened;
+      els.hint3casioBtn.textContent = opened
+        ? t("btn_hint3_casio_used")
+        : openStyle
+          ? t("btn_hint3_casio_open")
+          : t("btn_hint3_casio");
+    } else {
+      els.hint3casioBtn.hidden = true;
+    }
+    if (els.hint3excelBtn) {
+      if (hasExcel) {
+        els.hint3excelBtn.hidden = false;
+        const opened = !els.hint3excel.hidden;
+        els.hint3excelBtn.disabled = opened;
+        els.hint3excelBtn.textContent = opened
+          ? t("btn_hint3_excel_used")
+          : openStyle
+            ? t("btn_hint3_excel_open")
+            : t("btn_hint3_excel");
+      } else {
+        els.hint3excelBtn.hidden = true;
+      }
+    }
+  }
+
+  function resetUI() {
+    state.answered = false;
+    state.retryPhase = false;
+    state.lastExpected = "";
+    state.hintsUsed = 0;
+    state.clarifyShown = false;
+    state.clarifyAiShown = false;
+    if (els.clarifyBtn) {
+      els.clarifyBtn.hidden = true;
+      els.clarifyBtn.disabled = false;
+      els.clarifyBtn.textContent = t("btn_clarify");
+    }
+    if (els.clarifyPanel) {
+      els.clarifyPanel.hidden = true;
+      els.clarifyPanel.textContent = "";
+      els.clarifyPanel.className = "clarify";
+    }
+    if (els.teachPanel) {
+      els.teachPanel.hidden = true;
+      els.teachPanel.innerHTML = "";
+    }
+    els.feedback.hidden = true;
+    els.feedback.textContent = "";
+    els.feedback.className = "feedback";
+    els.feedback.classList.remove("math-text", "math-rich", "calc-keys-hint");
+    els.check.hidden = true;
+    els.check.textContent = t("btn_check");
+    els.next.hidden = true;
+    els.skip.hidden = false;
+    els.skip.textContent = t("btn_skip");
+    if (els.remix) els.remix.hidden = false;
+    els.hint1.hidden = true;
+    els.hint2.hidden = true;
+    els.hint3ti.hidden = true;
+    els.hint3casio.hidden = true;
+    if (els.hint3excel) els.hint3excel.hidden = true;
+    setMathText(els.hint1, "");
+    setMathText(els.hint2, "");
+    setMathText(els.hint3ti, "");
+    setMathText(els.hint3casio, "");
+    if (els.hint3excel) setMathText(els.hint3excel, "");
+    els.hint1Btn.disabled = false;
+    els.hint2Btn.disabled = false;
+    els.hint3tiBtn.disabled = false;
+    els.hint3casioBtn.disabled = false;
+    if (els.hint3excelBtn) els.hint3excelBtn.disabled = false;
+    els.hint1Btn.textContent = t("btn_hint1");
+    els.hint2Btn.textContent = t("btn_hint2");
+    els.hint3tiBtn.textContent = t("btn_hint3_ti");
+    els.hint3casioBtn.textContent = t("btn_hint3_casio");
+    if (els.hint3excelBtn) els.hint3excelBtn.textContent = t("btn_hint3_excel");
+    hideHintControls();
+    els.choices.hidden = true;
+    els.choices.innerHTML = "";
+    els.form.hidden = true;
+    clearMultiFields();
+    els.singleField.hidden = false;
+    els.figure.hidden = true;
+    els.figure.innerHTML = "";
+    els.input.value = "";
+    els.input.placeholder = "";
+    els.input.disabled = false;
+    if (els.mathInsert) {
+      els.mathInsert.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = false;
+      });
+    }
+    els.unit.textContent = "";
+  }
+
+  function clearMultiFields() {
+    if (!els.multiFields) return;
+    els.multiFields.innerHTML = "";
+    els.multiFields.hidden = true;
+    els.multiFields.classList.remove("multi-fields--classify");
+  }
+
+  function getMultiInputs() {
+    if (!els.multiFields) return [];
+    return [
+      ...els.multiFields.querySelectorAll("input[data-field-id]"),
+      ...els.multiFields.querySelectorAll("select[data-field-id]"),
+    ];
+  }
+
+  function collectMultiAnswers() {
+    const out = {};
+    getMultiInputs().forEach((control) => {
+      out[control.dataset.fieldId] = control.value;
+    });
+    return out;
+  }
+
+  function createMultiInput(f, inputId) {
+    if (f.type === "select") {
+      const select = document.createElement("select");
+      select.id = inputId;
+      select.dataset.fieldId = f.id;
+      select.className = "field-select";
+      if (f.placeholder) {
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = f.placeholder;
+        blank.disabled = true;
+        blank.selected = true;
+        blank.hidden = true;
+        select.appendChild(blank);
+      }
+      (f.options || []).forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt.value;
+        option.textContent = opt.label || opt.value;
+        select.appendChild(option);
+      });
+      return select;
+    }
+    const input = document.createElement("input");
+    input.id = inputId;
+    input.type = "text";
+    input.dataset.fieldId = f.id;
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    if (f.placeholder) input.placeholder = f.placeholder;
+    if (f.maxLength) input.maxLength = f.maxLength;
+    if (f.digit) {
+      input.className = "digit-input";
+      input.inputMode = "numeric";
+    }
+    return input;
+  }
+
+  function appendStandardField(f, focus) {
+    const row = document.createElement("div");
+    const presentation = f.presentation || "";
+    row.className =
+      "multi-field" +
+      (presentation === "sequence-choice" ? " multi-field--sequence-choice" : "") +
+      (f.type === "select" ? " multi-field--select" : "");
+
+    const label = document.createElement("label");
+    const inputId = "mf-" + f.id;
+    label.htmlFor = inputId;
+    label.textContent = f.label || f.id;
+
+    const inputRow = document.createElement("div");
+    inputRow.className = "input-row";
+
+    const control = createMultiInput(f, inputId);
+    inputRow.appendChild(control);
+    if (f.unit) {
+      const unit = document.createElement("span");
+      unit.className = "unit";
+      unit.textContent = f.unit;
+      inputRow.appendChild(unit);
+    }
+
+    row.appendChild(label);
+    row.appendChild(inputRow);
+    els.multiFields.appendChild(row);
+    if (focus) control.focus();
+    return control;
+  }
+
+  function renderMultiFields(pub) {
+    clearMultiFields();
+    els.singleField.hidden = true;
+    els.multiFields.hidden = false;
+    const fields = pub.fields || [];
+    const allSequenceChoice =
+      fields.length > 0 &&
+      fields.every(function (f) {
+        return f.presentation === "sequence-choice";
+      });
+    els.multiFields.classList.toggle("multi-fields--classify", allSequenceChoice);
+    const fieldById = Object.fromEntries(fields.map((f) => [f.id, f]));
+    const layout =
+      pub.layout || fields.map((f) => ({ widget: "field", id: f.id }));
+    let focusSet = false;
+
+    layout.forEach((item) => {
+      if (item.widget === "fraction") {
+        const numF = fieldById[item.num];
+        const denF = fieldById[item.denom];
+        if (!numF || !denF) return;
+
+        const row = document.createElement("div");
+        row.className = "multi-field multi-fraction";
+
+        if (item.label) {
+          const label = document.createElement("span");
+          label.className = "multi-widget-label";
+          label.textContent = item.label;
+          row.appendChild(label);
+        }
+
+        const frac = document.createElement("div");
+        frac.className = "fraction-input";
+        frac.setAttribute("role", "group");
+        frac.setAttribute("aria-label", item.label || t("field.slope"));
+
+        const numIn = createMultiInput(numF, "mf-" + item.num);
+        const denIn = createMultiInput(denF, "mf-" + item.denom);
+        const bar = document.createElement("span");
+        bar.className = "fraction-bar";
+        bar.setAttribute("aria-hidden", "true");
+
+        frac.appendChild(numIn);
+        frac.appendChild(bar);
+        frac.appendChild(denIn);
+        row.appendChild(frac);
+        els.multiFields.appendChild(row);
+
+        if (!focusSet) {
+          numIn.focus();
+          focusSet = true;
+        }
+        return;
+      }
+
+      if (item.widget === "unit_value") {
+        const valF = fieldById[item.value];
+        const unitF = fieldById[item.unit];
+        if (!valF || !unitF) return;
+
+        const row = document.createElement("div");
+        row.className = "multi-field multi-unit-value";
+
+        if (item.label) {
+          const label = document.createElement("label");
+          label.className = "multi-widget-label";
+          label.textContent = item.label;
+          row.appendChild(label);
+        }
+
+        const inputRow = document.createElement("div");
+        inputRow.className = "input-row unit-value-row";
+
+        const valIn = createMultiInput(valF, "mf-" + item.value);
+        const unitSel = createMultiInput(unitF, "mf-" + item.unit);
+        unitSel.className = "unit-select";
+
+        inputRow.appendChild(valIn);
+        inputRow.appendChild(unitSel);
+        row.appendChild(inputRow);
+        els.multiFields.appendChild(row);
+
+        if (!focusSet) {
+          valIn.focus();
+          focusSet = true;
+        }
+        return;
+      }
+
+      if (item.widget === "division") {
+        const row = document.createElement("div");
+        row.className = "multi-field multi-division";
+
+        const work = document.createElement("div");
+        work.className = "division-work";
+        work.setAttribute("role", "group");
+        work.setAttribute("aria-label", t("field.division_work"));
+
+        const quotientRow = document.createElement("div");
+        quotientRow.className = "div-row quotient-row";
+
+        const gutter = document.createElement("div");
+        gutter.className = "div-gutter";
+        gutter.setAttribute("aria-hidden", "true");
+        quotientRow.appendChild(gutter);
+
+        const qDigits = document.createElement("div");
+        qDigits.className = "div-quotient-digits";
+        (item.quotient || []).forEach((qid) => {
+          const qf = fieldById[qid];
+          if (qf) qDigits.appendChild(createMultiInput(qf, "mf-" + qid));
+        });
+        quotientRow.appendChild(qDigits);
+
+        if (item.remainder && fieldById[item.remainder]) {
+          const remWrap = document.createElement("div");
+          remWrap.className = "div-remainder";
+          const remLbl = document.createElement("span");
+          remLbl.className = "div-rem-label";
+          remLbl.textContent = "R";
+          remWrap.appendChild(remLbl);
+          remWrap.appendChild(
+            createMultiInput(fieldById[item.remainder], "mf-" + item.remainder)
+          );
+          quotientRow.appendChild(remWrap);
+        }
+
+        const problemRow = document.createElement("div");
+        problemRow.className = "div-row problem-row";
+
+        const divisorEl = document.createElement("span");
+        divisorEl.className = "div-divisor";
+        divisorEl.textContent = String(item.divisor);
+
+        const parenEl = document.createElement("span");
+        parenEl.className = "div-paren";
+        parenEl.textContent = ")";
+
+        const dividendEl = document.createElement("span");
+        dividendEl.className = "div-dividend";
+        dividendEl.textContent = String(item.dividend);
+
+        const barEl = document.createElement("div");
+        barEl.className = "div-bar";
+        barEl.setAttribute("aria-hidden", "true");
+
+        problemRow.appendChild(divisorEl);
+        problemRow.appendChild(parenEl);
+        problemRow.appendChild(dividendEl);
+
+        work.appendChild(quotientRow);
+        work.appendChild(barEl);
+        work.appendChild(problemRow);
+        row.appendChild(work);
+        els.multiFields.appendChild(row);
+
+        const firstQ = qDigits.querySelector("input");
+        if (!focusSet && firstQ) {
+          firstQ.focus();
+          focusSet = true;
+        }
+        return;
+      }
+
+      if (item.widget === "excel") {
+        appendExcelSheet(item, fieldById, !focusSet);
+        focusSet = true;
+        return;
+      }
+
+      if (item.widget === "field") {
+        const f = fieldById[item.id];
+        if (!f) return;
+        appendStandardField(f, !focusSet);
+        if (!focusSet) focusSet = true;
+      }
+    });
+  }
+
+  const EXCEL_FN_TIPS = {
+    sum: "SUM(number1, [number2], …)",
+    average: "AVERAGE(number1, [number2], …)",
+    min: "MIN(number1, [number2], …)",
+    max: "MAX(number1, [number2], …)",
+    round: "ROUND(number, num_digits)",
+    product: "PRODUCT(number1, [number2], …)",
+    pmt: "PMT(rate, nper, pv, [fv], [type])",
+    fv: "FV(rate, nper, pmt, [pv], [type])",
+    pv: "PV(rate, nper, pmt, [fv], [type])",
+    nper: "NPER(rate, pmt, pv, [fv], [type])",
+    rate: "RATE(nper, pmt, pv, [fv], [type], [guess])",
+    if: "IF(logical_test, value_if_true, [value_if_false])",
+  };
+
+  function excelTipForInput(value, fallback) {
+    const m = String(value || "").match(/^=\s*([a-zA-Z]+)/);
+    if (m) {
+      const tip = EXCEL_FN_TIPS[m[1].toLowerCase()];
+      if (tip) return tip;
+    }
+    return fallback || t("excel_formula_tip_default");
+  }
+
+  function excelSheetTsv(item, formulaValue) {
+    const cols = item.cols && item.cols.length ? item.cols : ["A", "B"];
+    const rows = item.rows || [];
+    const formulaId = item.formulaField || "formula";
+    const activeRef = String(item.active || "").toUpperCase();
+    const lines = [];
+    lines.push("\t" + cols.join("\t"));
+    rows.forEach(function (row) {
+      const cells = [String(row.r)];
+      cols.forEach(function (col) {
+        const ref = col + String(row.r);
+        const raw = row.cells ? row.cells[col] : null;
+        const isActive =
+          (raw && typeof raw === "object" && raw.field === formulaId) ||
+          ref === activeRef;
+        if (isActive) {
+          cells.push(formulaValue != null ? String(formulaValue) : "");
+        } else if (raw != null && typeof raw === "object" && raw.value != null) {
+          cells.push(String(raw.value));
+        } else if (raw != null && typeof raw !== "object") {
+          cells.push(String(raw));
+        } else {
+          cells.push("");
+        }
+      });
+      lines.push(cells.join("\t"));
+    });
+    return lines.join("\n");
+  }
+
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(String(text)).catch(function () {
+        return fallbackCopyText(text);
+      });
+    }
+    return Promise.resolve(fallbackCopyText(text));
+  }
+
+  function fallbackCopyText(text) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = String(text);
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function appendExcelSheet(item, fieldById, focus) {
+    const formulaId = item.formulaField || "formula";
+    const formulaField = fieldById[formulaId];
+    if (!formulaField) return;
+
+    const cols = item.cols && item.cols.length ? item.cols : ["A", "B"];
+    const rows = item.rows || [];
+    const activeRef = String(item.active || "").toUpperCase();
+
+    const wrap = document.createElement("div");
+    wrap.className = "multi-field multi-excel";
+
+    const win = document.createElement("div");
+    win.className = "excel-window";
+    win.setAttribute("role", "group");
+    win.setAttribute("aria-label", item.title || t("excel_window_label"));
+
+    const titlebar = document.createElement("div");
+    titlebar.className = "excel-titlebar";
+    const titleText = document.createElement("span");
+    titleText.className = "excel-title";
+    titleText.textContent = item.title || "Workbook.xlsx";
+    titlebar.appendChild(titleText);
+
+    const titleActions = document.createElement("div");
+    titleActions.className = "excel-title-actions";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "excel-copy-btn";
+    copyBtn.textContent = t("btn_excel_copy");
+    copyBtn.setAttribute("aria-label", t("btn_excel_copy_aria"));
+    copyBtn.title = t("btn_excel_copy_aria");
+    titleActions.appendChild(copyBtn);
+
+    const traffic = document.createElement("span");
+    traffic.className = "excel-traffic";
+    traffic.setAttribute("aria-hidden", "true");
+    traffic.innerHTML = "<i></i><i></i><i></i>";
+    titleActions.appendChild(traffic);
+    titlebar.appendChild(titleActions);
+    win.appendChild(titlebar);
+
+    const formulaBar = document.createElement("div");
+    formulaBar.className = "excel-formula-bar";
+
+    const nameBox = document.createElement("div");
+    nameBox.className = "excel-name-box";
+    nameBox.textContent = activeRef || "A1";
+    formulaBar.appendChild(nameBox);
+
+    const fx = document.createElement("span");
+    fx.className = "excel-fx";
+    fx.textContent = "ƒx";
+    fx.setAttribute("aria-hidden", "true");
+    formulaBar.appendChild(fx);
+
+    const input = createMultiInput(formulaField, "mf-" + formulaId);
+    input.className = (input.className ? input.className + " " : "") + "excel-formula-input";
+    if (!input.placeholder) input.placeholder = "=";
+    input.setAttribute("aria-label", formulaField.label || t("c.field.excel_formula"));
+    formulaBar.appendChild(input);
+    win.appendChild(formulaBar);
+
+    const tip = document.createElement("div");
+    tip.className = "excel-tip";
+    tip.textContent = item.tip || t("excel_formula_tip_default");
+    win.appendChild(tip);
+
+    const scroller = document.createElement("div");
+    scroller.className = "excel-grid-wrap";
+    const table = document.createElement("table");
+    table.className = "excel-grid";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const corner = document.createElement("th");
+    corner.className = "excel-corner";
+    corner.textContent = "";
+    headRow.appendChild(corner);
+    cols.forEach(function (col) {
+      const th = document.createElement("th");
+      th.textContent = col;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    let cellMirror = null;
+
+    rows.forEach(function (row) {
+      const tr = document.createElement("tr");
+      const rowHead = document.createElement("th");
+      rowHead.className = "excel-row-head";
+      rowHead.textContent = String(row.r);
+      tr.appendChild(rowHead);
+
+      cols.forEach(function (col) {
+        const td = document.createElement("td");
+        const ref = col + String(row.r);
+        td.dataset.cell = ref;
+        const raw = row.cells ? row.cells[col] : null;
+        const isActive =
+          (raw && typeof raw === "object" && raw.field === formulaId) ||
+          ref === activeRef;
+
+        if (isActive) {
+          td.className = "excel-cell excel-cell--active";
+          const mirror = document.createElement("span");
+          mirror.className = "excel-cell-mirror";
+          mirror.textContent = "";
+          td.appendChild(mirror);
+          cellMirror = mirror;
+          td.addEventListener("click", function () {
+            input.focus();
+          });
+        } else if (raw != null && typeof raw === "object" && raw.value != null) {
+          td.className = "excel-cell excel-cell--locked";
+          td.textContent = String(raw.value);
+        } else if (raw != null && typeof raw !== "object") {
+          const isHeaderish = row.r === 1 || col === "A";
+          td.className =
+            "excel-cell" + (isHeaderish ? " excel-cell--label" : " excel-cell--locked");
+          td.textContent = String(raw);
+        } else {
+          td.className = "excel-cell";
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    scroller.appendChild(table);
+    win.appendChild(scroller);
+    wrap.appendChild(win);
+    els.multiFields.appendChild(wrap);
+
+    function syncExcelUi() {
+      if (cellMirror) cellMirror.textContent = input.value;
+      tip.textContent = excelTipForInput(input.value, item.tip);
+    }
+    input.addEventListener("input", syncExcelUi);
+    input.addEventListener("focus", syncExcelUi);
+    syncExcelUi();
+
+    let copyResetTimer = null;
+    copyBtn.addEventListener("click", function () {
+      const tsv = excelSheetTsv(item, input.value);
+      copyTextToClipboard(tsv).then(function () {
+        copyBtn.textContent = t("btn_excel_copied");
+        copyBtn.classList.add("is-copied");
+        if (copyResetTimer) clearTimeout(copyResetTimer);
+        copyResetTimer = setTimeout(function () {
+          copyBtn.textContent = t("btn_excel_copy");
+          copyBtn.classList.remove("is-copied");
+        }, 1600);
+      });
+    });
+
+    if (focus) input.focus();
+  }
+
+  function getAnswerPayload() {
+    if (state.publicQ && state.publicQ.type === "multi") {
+      return collectMultiAnswers();
+    }
+    return els.input.value;
+  }
+
+  function setInputsDisabled(disabled) {
+    els.input.disabled = disabled;
+    getMultiInputs().forEach((input) => {
+      input.disabled = disabled;
+    });
+    if (els.mathInsert) {
+      els.mathInsert.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = disabled;
+      });
+    }
+  }
+
+  function lockInputs() {
+    setInputsDisabled(true);
+  }
+
+  function clearAnswerInputs() {
+    els.input.value = "";
+    getMultiInputs().forEach((control) => {
+      if (control.tagName === "SELECT") control.selectedIndex = 0;
+      else control.value = "";
+      control.classList.remove("kept");
+      const row = control.closest(".multi-field");
+      if (row) row.classList.remove("multi-field--kept");
+    });
+  }
+
+  /** On multi retry: keep correct parts, blank only the wrong ones. */
+  function clearWrongMultiInputs() {
+    const answers = collectMultiAnswers();
+    const fields = (state.fullQuestion && state.fullQuestion.fields) || [];
+    const byId = Object.fromEntries(fields.map((f) => [f.id, f]));
+    const checkField =
+      Q && typeof Q.checkMultiField === "function" ? Q.checkMultiField : null;
+
+    getMultiInputs().forEach((control) => {
+      const field = byId[control.dataset.fieldId];
+      const ok =
+        field && checkField ? checkField(field, answers[field.id]) : false;
+      const row = control.closest(".multi-field");
+      if (ok) {
+        control.disabled = true;
+        control.classList.add("kept");
+        if (row) row.classList.add("multi-field--kept");
+        return;
+      }
+      if (control.tagName === "SELECT") control.selectedIndex = 0;
+      else control.value = "";
+      control.disabled = false;
+      control.classList.remove("kept");
+      if (row) row.classList.remove("multi-field--kept");
+      // Excel formula bar mirrors into the active cell — force a refresh.
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    if (els.mathInsert) {
+      els.mathInsert.querySelectorAll("button").forEach((btn) => {
+        btn.disabled = false;
+      });
+    }
+  }
+
+  function focusFirstAnswerInput() {
+    if (state.publicQ && state.publicQ.type === "multi") {
+      const inputs = getMultiInputs();
+      const first = inputs.find((c) => !c.disabled) || inputs[0];
+      if (first) first.focus();
+      return;
+    }
+    els.input.focus();
+  }
+
+  function teachHowtoText(pub, full) {
+    if (pub && pub.clarify) return pub.clarify;
+    if (full && full.clarify) return full.clarify;
+    const parts = [];
+    if (pub && pub.hint1) parts.push(pub.hint1);
+    if (pub && pub.hint2) parts.push(pub.hint2);
+    return parts.join("\n\n") || t("clarify_fallback");
+  }
+
+  /**
+   * Teach Me scaffolding by remaining layers (5→1).
+   * 5–4: hint1+2 + how-to walkthrough · 3–2: hint1+2 · 1: hint1
+   * Answer and calculator steps stay opt-in (not auto-opened).
+   */
+  function applyTeachScaffolding(pub, full) {
+    if (state.mode !== "teachme" || !full || !full.topic) return;
+    const layers =
+      P.getTeachScaffold && typeof P.getTeachScaffold === "function"
+        ? P.getTeachScaffold(full.topic)
+        : P.TEACH_MAX || 5;
+    if (layers <= 0) return;
+
+    const showHint1 = layers >= 1 && pub.has_hint1;
+    const showHint2 = layers >= 2 && pub.has_hint2;
+    const showHowto = layers >= 4;
+
+    if (showHint1 && els.hint1.textContent) {
+      els.hint1.hidden = false;
+      state.hintsUsed = Math.max(state.hintsUsed, 1);
+    }
+    if (showHint2 && els.hint2.textContent) {
+      els.hint2.hidden = false;
+      state.hintsUsed = Math.max(state.hintsUsed, 2);
+    }
+
+    els.hint1Btn.hidden = true;
+    els.hint2Btn.hidden = true;
+    if (pub.has_hint3) showCalcButtons(false);
+    else {
+      els.hint3tiBtn.hidden = true;
+      els.hint3casioBtn.hidden = true;
+      if (els.hint3excelBtn) els.hint3excelBtn.hidden = true;
+    }
+    if (els.clarifyBtn) els.clarifyBtn.hidden = true;
+
+    if (els.teachPanel) {
+      const bits = [];
+      bits.push(
+        '<span class="teach-badge">' +
+          escapeHtml(t("teach_badge", { layers: String(layers) })) +
+          "</span>"
+      );
+      if (showHowto) {
+        bits.push('<div class="teach-block teach-howto">');
+        bits.push(
+          '<p class="teach-label">' + escapeHtml(t("teach_howto_label")) + "</p>"
+        );
+        bits.push('<div class="teach-body"></div></div>');
+      }
+      bits.push(
+        '<p class="teach-note">' + escapeHtml(t("teach_layer_hint")) + "</p>"
+      );
+      els.teachPanel.innerHTML = bits.join("");
+      els.teachPanel.hidden = false;
+
+      if (showHowto) {
+        const howtoEl = els.teachPanel.querySelector(".teach-howto .teach-body");
+        if (howtoEl) setMathText(howtoEl, teachHowtoText(pub, full), true);
+      }
+    }
+  }
+
+  function loadQuestion() {
+    resetUI();
+    els.next.textContent = t("btn_next");
+
+    if (state.mode !== "finalboss") {
+      hideBossFace();
+    } else if (!bossFightActive()) {
+      // Between runs / after win-fail — keep face hidden until a new fight starts.
+      if (state.boss.status !== "won") hideBossFace();
+    }
+
+    let topic = null;
+    // After a boss defeat, drill only the missed topic until it is remastered.
+    const drillTopic =
+      state.mode !== "finalboss" && P.syncBossDrillTopic
+        ? P.syncBossDrillTopic()
+        : null;
+    if (drillTopic) {
+      topic = drillTopic;
+      state.mode = drillTopic;
+      setModeButtons();
+    } else if (state.mode === "finalboss") {
+      if (!state.boss.active || state.boss.status === "failed" || state.boss.status === "won") {
+        // Resume a saved mid-fight run after refresh / leaving the mode.
+        if (!restoreBossRunFromStorage()) {
+          startBossRun();
+          els.feedback.hidden = false;
+          els.feedback.className = "feedback ok";
+          // Real fights never use practice copy.
+          els.feedback.textContent = state.boss.real
+            ? tTheme("boss_start")
+            : tTheme("boss_start_practice");
+        } else {
+          setBossFace(bossEmoji("live"), "live");
+          updateFinalBossButton(P.getProgressView());
+          els.feedback.hidden = false;
+          els.feedback.className = "feedback ok";
+          if (state.boss.index > 0) {
+            els.feedback.textContent = tTheme("boss_ok", {
+              current: state.boss.index,
+              total: state.boss.queue.length,
+            });
+          } else {
+            els.feedback.textContent = state.boss.real
+              ? tTheme("boss_start")
+              : tTheme("boss_start_practice");
+          }
+        }
+      }
+      topic = state.boss.queue[state.boss.index];
+    } else if (state.mode === "smart") {
+      topic = P.pickSmartTopic(state.lastTopic);
+    } else if (state.mode === "nourish") {
+      if (!state.nourishWeekId) {
+        openNourishWeekModal();
+        els.prompt.textContent = t("nourish_pick_week_prompt");
+        els.topic.textContent = t("mode_nourish");
+        els.check.hidden = true;
+        els.skip.hidden = true;
+        if (els.remix) els.remix.hidden = true;
+        hideHintControls();
+        return;
+      }
+      topic = P.pickNourishTopic
+        ? P.pickNourishTopic(state.nourishWeekId, state.lastTopic)
+        : P.pickSmartTopic(state.lastTopic);
+    } else if (state.mode === "teachme") {
+      if (P.allTeachGraduated && P.allTeachGraduated()) {
+        state.mode = "smart";
+        setModeButtons();
+        topic = P.pickSmartTopic(state.lastTopic);
+        els.feedback.hidden = false;
+        els.feedback.className = "feedback ok";
+        els.feedback.textContent = t("feedback_teach_all_done");
+      } else {
+        topic = P.pickTeachTopic
+          ? P.pickTeachTopic(state.lastTopic)
+          : P.pickSmartTopic(state.lastTopic);
+      }
+    } else if (state.mode === "all") {
+      topic = P.pickAllTopic(state.lastTopic);
+    } else if (state.mode === "flashcards") {
+      topic = "flashcards";
+    } else {
+      topic = state.mode;
+    }
+
+    if (!topic) {
+      els.prompt.textContent = t("loading");
+      els.topic.textContent =
+        state.mode === "finalboss" ? tTheme("mode_finalboss") : t("mode_smart");
+      els.check.hidden = true;
+      els.skip.hidden = true;
+      if (els.remix) els.remix.hidden = true;
+      hideHintControls();
+      return;
+    }
+
+    if (Q.setBossTheme) Q.setBossTheme(state.mode === "finalboss");
+    const full = Q.generateQuestion(topic);
+    showQuestion(full);
+    // After a question loads (e.g. post-mastery Next), offer the boss fight.
+    if (state.mode !== "finalboss") {
+      maybePromptBossFight();
+    }
+  }
+
+  function loadRemix() {
+    if (!state.fullQuestion) {
+      loadQuestion();
+      return;
+    }
+    // Abandon current item without skip penalty — intentional reshuffle.
+    resetUI();
+    if (Q.setBossTheme) Q.setBossTheme(state.mode === "finalboss");
+    const full = Q.remixQuestion(state.fullQuestion);
+    showQuestion(full);
+  }
+
+  function showQuestion(full) {
+    const pub = Q.publicQuestion(full);
+    state.fullQuestion = full;
+    state.publicQ = pub;
+    if (full && full.topic) state.lastTopic = full.topic;
+
+    els.topic.textContent =
+      state.mode === "flashcards"
+        ? t("mode_flashcards")
+        : state.mode === "teachme"
+          ? t("mode_teachme") + " · " + pub.topic_label
+          : state.mode === "finalboss"
+            ? tTheme("boss_progress", {
+                current: state.boss.index + 1,
+                total: state.boss.queue.length,
+                topic: pub.topic_label,
+              })
+            : pub.topic_label;
+    if (bossFightActive()) {
+      setBossFace(bossEmoji("live"), "live");
+    } else if (state.mode !== "finalboss" || state.boss.status !== "won") {
+      hideBossFace();
+    }
+    setMathText(els.prompt, pub.prompt);
+    setMathText(els.hint1, pub.hint1 || "", true);
+    setMathText(els.hint2, pub.hint2 || "", true);
+    setMathText(els.hint3ti, pub.hint3_ti || "", true, "ti");
+    setMathText(els.hint3casio, pub.hint3_casio || "", true, "casio");
+    if (els.hint3excel) setMathText(els.hint3excel, pub.hint3_excel || "", true, "excel");
+    if (pub.has_hint1 && state.mode !== "finalboss" && state.mode !== "teachme") {
+      els.hint1Btn.hidden = false;
+    } else if (pub.has_hint2 && state.mode !== "finalboss" && state.mode !== "teachme") {
+      els.hint2Btn.hidden = false;
+    } else if (pub.has_hint3 && state.mode !== "finalboss" && state.mode !== "teachme") {
+      showCalcButtons(false);
+    }
+    // Clarification is available outside the Final Boss gauntlet and Teach me (auto-shown there).
+    if (
+      els.clarifyBtn &&
+      pub.has_clarify &&
+      state.mode !== "finalboss" &&
+      state.mode !== "teachme"
+    ) {
+      els.clarifyBtn.hidden = false;
+    }
+
+    if (state.mode === "finalboss") {
+      // No remix/skip during boss — especially the real defense of Zarahemla.
+      if (els.remix) els.remix.hidden = true;
+      els.skip.hidden = true;
+    }
+
+    if (pub.svg) {
+      els.figure.hidden = false;
+      els.figure.innerHTML = pub.svg;
+    }
+
+    if (pub.type === "mc") {
+      els.choices.hidden = false;
+      pub.choices.forEach((c) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice math-text";
+        btn.dataset.choice = c;
+        if (window.QuizMathFormat && window.QuizMathFormat.toHtml) {
+          btn.innerHTML = window.QuizMathFormat.toHtml(c);
+        } else {
+          btn.textContent = c;
+        }
+        btn.addEventListener("click", () => submitAnswer(c));
+        els.choices.appendChild(btn);
+      });
+    } else if (pub.type === "multi") {
+      els.form.hidden = false;
+      els.check.hidden = false;
+      renderMultiFields(pub);
+    } else {
+      els.form.hidden = false;
+      els.check.hidden = false;
+      els.unit.textContent = pub.unit || "";
+      if (pub.placeholder) els.input.placeholder = pub.placeholder;
+      focusFirstAnswerInput();
+    }
+
+    applyTeachScaffolding(pub, full);
+  }
+
+  function detectBrowserAI() {
+    const ua = navigator.userAgent || "";
+    const isEdge = /Edg\//.test(ua);
+    const isChrome = /Chrome\//.test(ua) && !/Edg\//.test(ua) && !/OPR\//.test(ua);
+    const isFirefox = /Firefox\//.test(ua);
+    const isSafari = /Safari\//.test(ua) && !/Chrome\//.test(ua);
+    if (isEdge) {
+      return {
+        key: "clarify_ai_edge",
+        name: "Copilot",
+        url: "https://copilot.microsoft.com/",
+      };
+    }
+    if (isChrome) {
+      return {
+        key: "clarify_ai_chrome",
+        name: "Gemini",
+        url: "https://gemini.google.com/",
+      };
+    }
+    if (isFirefox || isSafari) {
+      return {
+        key: "clarify_ai_other",
+        name: "Copilot or Gemini",
+        url: "https://copilot.microsoft.com/",
+      };
+    }
+    return {
+      key: "clarify_ai_other",
+      name: "Copilot or Gemini",
+      url: "https://gemini.google.com/",
+    };
+  }
+
+  function showClarify() {
+    if (!els.clarifyPanel || !state.publicQ) return;
+    const promptText = state.publicQ.prompt || "";
+
+    if (!state.clarifyShown) {
+      state.clarifyShown = true;
+      els.clarifyPanel.hidden = false;
+      els.clarifyPanel.className = "clarify";
+      // Prefer the first hint (approach) over the long synthesized walkthrough.
+      const firstHint =
+        (state.publicQ && state.publicQ.hint1) ||
+        t("clarify_fallback");
+      setMathText(els.clarifyPanel, firstHint, true);
+      els.clarifyBtn.textContent = t("btn_clarify_more");
+      // Opening clarification counts as using at least Hint 1 help.
+      if (!state.answered) {
+        state.hintsUsed = Math.max(state.hintsUsed, 1);
+      }
+      return;
+    }
+
+    // Second request — we don't have deeper automated help; route to browser AI.
+    const ai = detectBrowserAI();
+    state.clarifyAiShown = true;
+    els.clarifyPanel.hidden = false;
+    els.clarifyPanel.className = "clarify ai";
+    const msg = t(ai.key, { name: ai.name, url: ai.url });
+    els.clarifyPanel.innerHTML =
+      msg +
+      '\n\n<a class="clarify-link" href="' +
+      ai.url +
+      '" target="_blank" rel="noopener noreferrer">' +
+      t("clarify_ai_open", { name: ai.name }) +
+      "</a>" +
+      '\n\n<details class="clarify-prompt"><summary>' +
+      t("clarify_ai_copy_label") +
+      "</summary><pre>" +
+      escapeHtml(t("clarify_ai_prompt_template", { prompt: promptText })) +
+      "</pre></details>";
+    els.clarifyBtn.textContent = t("btn_clarify_ai_done");
+    els.clarifyBtn.disabled = true;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function showHintsAfterMiss() {
+    // Prefer the first hint only — setup / calc stay behind buttons.
+    if (els.hint1.textContent) els.hint1.hidden = false;
+    els.hint2.hidden = true;
+    els.hint3ti.hidden = true;
+    els.hint3casio.hidden = true;
+    if (els.hint3excel) els.hint3excel.hidden = true;
+    els.hint1Btn.hidden = true;
+    // Teach Me: keep both approach + setup open; calc stays opt-in.
+    if (state.mode === "teachme") {
+      if (els.hint2.textContent) {
+        els.hint2.hidden = false;
+        state.hintsUsed = Math.max(state.hintsUsed, 2);
+      }
+      els.hint2Btn.hidden = true;
+      if (state.publicQ && state.publicQ.has_hint3) showCalcButtons(true);
+      else {
+        els.hint3tiBtn.hidden = true;
+        els.hint3casioBtn.hidden = true;
+        if (els.hint3excelBtn) els.hint3excelBtn.hidden = true;
+      }
+      if (els.clarifyBtn) els.clarifyBtn.hidden = true;
+      return;
+    }
+    if (els.hint2.textContent) {
+      els.hint2Btn.hidden = false;
+      els.hint2Btn.disabled = false;
+      els.hint2Btn.textContent = t("btn_hint2");
+    } else {
+      els.hint2Btn.hidden = true;
+    }
+    showCalcButtons(true);
+    if (els.clarifyBtn && state.publicQ?.has_clarify) {
+      els.clarifyBtn.hidden = false;
+    }
+  }
+
+  function deriveSolution(q, expected) {
+    if (!q) return "";
+    if (q.solution) return String(q.solution).trim();
+    const exp =
+      expected != null && String(expected) !== ""
+        ? String(expected)
+        : q.answer != null
+          ? String(q.answer)
+          : "";
+    if (!exp) return "";
+    const calc = q.calc;
+    if (!calc || typeof calc !== "object") return "";
+    const raw = String(calc.ti || calc.casio || "").trim();
+    if (!raw) return "";
+    const lines = raw.split(/\n/).map(function (s) {
+      return s.trim();
+    });
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i];
+      if (!line || !/=$/.test(line)) continue;
+      if (/enter this|finish and round|do not use/i.test(line)) continue;
+      if (line.length > 100) continue;
+      return line + " " + exp;
+    }
+    return "";
+  }
+
+  function setFeedbackText(text, rich) {
+    if (!els.feedback) return;
+    if (rich) setMathText(els.feedback, text, true);
+    else {
+      els.feedback.textContent = text;
+      els.feedback.classList.remove("math-text", "math-rich", "calc-keys-hint");
+    }
+  }
+
+  function setWrongExpectedFeedback(expected) {
+    const exp = expected || state.lastExpected || "";
+    const sol = deriveSolution(state.fullQuestion, exp);
+    let msg = t("feedback_retry_fail", { expected: exp });
+    if (sol) msg += "\n" + t("feedback_solution", { solution: sol });
+    setFeedbackText(msg, Boolean(sol));
+  }
+
+  function beginRetry(result) {
+    state.retryPhase = true;
+    state.remixAfterFail = true;
+    state.lastExpected = result.expected;
+    els.feedback.className = "feedback no";
+    const tip =
+      result.hint ||
+      state.publicQ?.hint1 ||
+      state.publicQ?.hint2 ||
+      "";
+    const progress = `${result.unaided_correct}/${result.unaided_needed}`;
+    let masteryNote = "";
+    if (result.mastery_delta < 0) {
+      masteryNote = t("feedback_note_mastery_drop", { progress: progress });
+    }
+    els.feedback.textContent =
+      t("feedback_wrong_retry") +
+      masteryNote +
+      (tip ? t("feedback_wrong_hint", { hint: tip }) : "");
+    showHintsAfterMiss();
+
+    els.next.hidden = true;
+    els.skip.hidden = false;
+    els.skip.textContent = t("btn_skip_retry");
+    if (els.remix) els.remix.hidden = false;
+    els.check.textContent = t("btn_check_retry");
+
+    if (state.publicQ.type === "mc") {
+      [...els.choices.children].forEach((btn) => {
+        // Keep the wrong pick marked; allow another choice.
+        if (!btn.classList.contains("wrong")) {
+          btn.disabled = false;
+        }
+      });
+      els.check.hidden = true;
+    } else {
+      els.form.hidden = false;
+      els.check.hidden = false;
+      if (state.publicQ.type === "multi") {
+        clearWrongMultiInputs();
+      } else {
+        clearAnswerInputs();
+        setInputsDisabled(false);
+      }
+      focusFirstAnswerInput();
+    }
+  }
+
+  function finishAfterRetry(ok, expected) {
+    state.retryPhase = false;
+    if (ok) state.remixAfterFail = false;
+    state.answered = true;
+    lockInputs();
+    els.skip.hidden = true;
+    els.skip.textContent = t("btn_skip");
+    if (els.remix) els.remix.hidden = true;
+    els.check.textContent = t("btn_check");
+    els.next.hidden = false;
+
+    if (ok) {
+      if (state.mode === "teachme" && state.fullQuestion && P.recordTeachCorrect) {
+        const topic = state.fullQuestion.topic;
+        const label =
+          (state.publicQ && state.publicQ.topic_label) ||
+          (Q.TOPICS && Q.TOPICS[topic]) ||
+          topic;
+        const teach = P.recordTeachCorrect(topic);
+        els.feedback.className = "feedback ok";
+        if (teach.all_graduated) {
+          els.feedback.textContent = t("feedback_teach_all_done");
+          state.mode = "smart";
+          setModeButtons();
+        } else if (teach.graduated) {
+          els.feedback.textContent = t("feedback_teach_graduated", {
+            topic: label,
+          });
+        } else {
+          els.feedback.textContent = t("feedback_teach_correct", {
+            layers: String(teach.teach_scaffold),
+            topic: label,
+          });
+        }
+        if (state.publicQ.type === "mc") {
+          [...els.choices.children].forEach((btn) => {
+            btn.disabled = true;
+            if (choiceRaw(btn) === expected) btn.classList.add("right");
+          });
+        }
+        refreshProgress();
+        return null;
+      }
+      const credited = P.awardRetryCredit(state.fullQuestion);
+      els.feedback.className = "feedback ok";
+      els.feedback.textContent = t("feedback_retry_ok");
+      if (state.publicQ.type === "mc") {
+        [...els.choices.children].forEach((btn) => {
+          btn.disabled = true;
+          if (choiceRaw(btn) === expected) btn.classList.add("right");
+        });
+      }
+      refreshProgress();
+      return credited;
+    }
+
+    els.feedback.className = "feedback no";
+    setWrongExpectedFeedback(expected || state.lastExpected);
+    if (state.publicQ.type === "mc") {
+      [...els.choices.children].forEach((btn) => {
+        btn.disabled = true;
+        if (choiceRaw(btn) === (expected || state.lastExpected)) {
+          btn.classList.add("right");
+        }
+      });
+    }
+    refreshProgress();
+    return null;
+  }
+
+  function submitAnswer(answer) {
+    if (!state.fullQuestion) return;
+
+    if (state.retryPhase) {
+      const [ok, expected] = Q.checkAnswer(state.fullQuestion, answer);
+      finishAfterRetry(ok, expected);
+      return;
+    }
+
+    if (state.answered) return;
+    state.answered = true;
+    els.skip.hidden = true;
+    if (els.remix) els.remix.hidden = true;
+    els.check.hidden = true;
+    setInputsDisabled(true);
+    hideHintControls();
+
+    // Final Boss: miss knocks 1 mastery off that topic, then remix same question to continue.
+    if (state.mode === "finalboss" && state.boss.active) {
+      const [ok, expected] = Q.checkAnswer(state.fullQuestion, answer);
+      els.feedback.hidden = false;
+      if (state.publicQ.type === "mc") {
+        [...els.choices.children].forEach((btn) => {
+          btn.disabled = true;
+          if (ok && choiceRaw(btn) === expected) btn.classList.add("right");
+          if (!ok && choiceRaw(btn) === String(answer)) btn.classList.add("wrong");
+        });
+      }
+      if (!ok || state.hintsUsed > 0) {
+        bossMissAndRemix();
+        return;
+      }
+      advanceBossAfterCorrect();
+      return;
+    }
+
+    // Teach Me: peel one scaffold layer on correct; no unaided mastery while training.
+    if (state.mode === "teachme") {
+      const [ok, expected] = Q.checkAnswer(state.fullQuestion, answer);
+      els.feedback.hidden = false;
+      if (state.publicQ.type === "mc") {
+        [...els.choices.children].forEach((btn) => {
+          btn.disabled = true;
+          if (ok && choiceRaw(btn) === expected) btn.classList.add("right");
+          if (!ok && choiceRaw(btn) === String(answer)) btn.classList.add("wrong");
+        });
+      }
+      if (!ok) {
+        // Keep teach panels open; allow retry like normal recovery.
+        beginRetry({
+          expected: expected,
+          hint: "",
+          unaided_correct: 0,
+          unaided_needed: P.TEACH_MAX || 5,
+          mastery_delta: 0,
+        });
+        els.feedback.className = "feedback no";
+        els.feedback.textContent = t("feedback_teach_wrong");
+        return;
+      }
+
+      const topic = state.fullQuestion.topic;
+      const label =
+        (state.publicQ && state.publicQ.topic_label) ||
+        (Q.TOPICS && Q.TOPICS[topic]) ||
+        topic;
+      const teach = P.recordTeachCorrect
+        ? P.recordTeachCorrect(topic)
+        : { teach_scaffold: 0, graduated: false, all_graduated: true };
+      els.feedback.className = "feedback ok";
+      if (teach.all_graduated) {
+        els.feedback.textContent = t("feedback_teach_all_done");
+        state.mode = "smart";
+        setModeButtons();
+      } else if (teach.graduated) {
+        els.feedback.textContent = t("feedback_teach_graduated", {
+          topic: label,
+        });
+      } else {
+        els.feedback.textContent = t("feedback_teach_correct", {
+          layers: String(teach.teach_scaffold),
+          topic: label,
+        });
+      }
+      els.next.hidden = false;
+      refreshProgress();
+      return;
+    }
+
+    const result = P.recordAnswer(state.fullQuestion, answer, state.hintsUsed);
+    els.feedback.hidden = false;
+
+    if (result.correct) {
+      state.remixAfterFail = false;
+      els.feedback.className = "feedback ok";
+      const creditPct = Math.round(result.credit * 100);
+      const progress = `${result.unaided_correct}/${result.unaided_needed}`;
+      let note = "";
+      if (result.hints_used) {
+        note =
+          t("feedback_note_hinted", {
+            credit: creditPct,
+            progress: progress,
+          }) + " ";
+      } else {
+        note = t("feedback_note_unaided", { progress: progress }) + " ";
+      }
+      const masteredNote = result.just_mastered ? t("feedback_mastered") : "";
+      els.feedback.textContent = t("feedback_correct", {
+        credit: creditPct,
+        note: note,
+        streak: result.streak,
+        progress: progress,
+        mastered: masteredNote,
+      });
+      if (state.publicQ.type === "mc") {
+        [...els.choices.children].forEach((btn) => {
+          btn.disabled = true;
+          if (choiceRaw(btn) === result.expected) btn.classList.add("right");
+        });
+      }
+      els.next.hidden = false;
+      refreshProgress();
+      return;
+    }
+
+    // First miss → recovery chance for 5% (do not reveal expected yet).
+    if (state.publicQ.type === "mc") {
+      [...els.choices.children].forEach((btn) => {
+        btn.disabled = true;
+        if (choiceRaw(btn) === String(answer)) btn.classList.add("wrong");
+      });
+    }
+    beginRetry(result);
+    refreshProgress();
+  }
+
+  function insertAtCursor(text, cursorOffset) {
+    const input = els.input;
+    if (!input || (state.answered && !state.retryPhase)) return;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const before = input.value.slice(0, start);
+    const after = input.value.slice(end);
+    input.value = before + text + after;
+    const pos =
+      cursorOffset != null ? start + cursorOffset : start + text.length;
+    input.focus();
+    input.setSelectionRange(pos, pos);
+  }
+
+  function insertFraction() {
+    const input = els.input;
+    if (!input || (state.answered && !state.retryPhase)) return;
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    const selected = input.value.slice(start, end);
+    if (selected) {
+      insertAtCursor("(" + selected + ")/()", selected.length + 3);
+    } else {
+      insertAtCursor("()/()", 1);
+    }
+  }
+
+  if (els.mathInsert) {
+    // Keep input focus/selection when pressing insert buttons.
+    els.mathInsert.addEventListener("mousedown", (e) => {
+      if (e.target.closest("button")) e.preventDefault();
+    });
+    els.mathInsert.addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn || (state.answered && !state.retryPhase)) return;
+      if (btn.hasAttribute("data-insert-frac")) {
+        insertFraction();
+        return;
+      }
+      const text = btn.getAttribute("data-insert");
+      if (text) insertAtCursor(text);
+    });
+  }
+
+  els.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitAnswer(getAnswerPayload());
+  });
+
+  els.hint1Btn.addEventListener("click", () => {
+    if (!els.hint1.textContent || state.answered) return;
+    els.hint1.hidden = false;
+    state.hintsUsed = Math.max(state.hintsUsed, 1);
+    els.hint1Btn.textContent = t("btn_hint1_used");
+    els.hint1Btn.disabled = true;
+    if (state.publicQ?.has_hint2) els.hint2Btn.hidden = false;
+    else if (state.publicQ?.has_hint3) showCalcButtons(false);
+    if (els.clarifyBtn && state.publicQ?.has_clarify) els.clarifyBtn.hidden = false;
+  });
+
+  els.hint2Btn.addEventListener("click", () => {
+    if (!els.hint2.textContent || state.answered) return;
+    els.hint2.hidden = false;
+    state.hintsUsed = Math.max(state.hintsUsed, 2);
+    els.hint2Btn.textContent = t("btn_hint2_used");
+    els.hint2Btn.disabled = true;
+    if (state.publicQ?.has_hint3) showCalcButtons(false);
+    if (els.clarifyBtn && state.publicQ?.has_clarify) els.clarifyBtn.hidden = false;
+  });
+
+  if (els.clarifyBtn) {
+    els.clarifyBtn.addEventListener("click", () => {
+      showClarify();
+    });
+  }
+
+  function openCalcPanel(kind) {
+    const panel =
+      kind === "ti" ? els.hint3ti : kind === "excel" ? els.hint3excel : els.hint3casio;
+    const btn =
+      kind === "ti"
+        ? els.hint3tiBtn
+        : kind === "excel"
+          ? els.hint3excelBtn
+          : els.hint3casioBtn;
+    if (!panel || !btn || !panel.textContent || !panel.hidden) return;
+    panel.hidden = false;
+    state.hintsUsed = Math.max(state.hintsUsed, 3);
+    btn.disabled = true;
+    btn.textContent =
+      kind === "ti"
+        ? t("btn_hint3_ti_used")
+        : kind === "excel"
+          ? t("btn_hint3_excel_used")
+          : t("btn_hint3_casio_used");
+    if (els.clarifyBtn && state.publicQ?.has_clarify) els.clarifyBtn.hidden = false;
+  }
+
+  els.hint3tiBtn.addEventListener("click", () => openCalcPanel("ti"));
+  els.hint3casioBtn.addEventListener("click", () => openCalcPanel("casio"));
+  if (els.hint3excelBtn) {
+    els.hint3excelBtn.addEventListener("click", () => openCalcPanel("excel"));
+  }
+
+  if (els.remix) {
+    els.remix.addEventListener("click", () => {
+      if (state.retryPhase) {
+        // Miss already recorded; reshuffle without the 0% skip finish.
+        state.retryPhase = false;
+      }
+      loadRemix();
+    });
+  }
+
+  function goToNextQuestion() {
+    if (state.mode === "finalboss" && state.boss.status === "won") {
+      state.boss.status = null;
+    }
+    // After a miss (and failed/skipped retry), drill the same problem type.
+    if (
+      state.remixAfterFail &&
+      state.mode !== "finalboss" &&
+      state.fullQuestion &&
+      typeof state.fullQuestion._gen === "function"
+    ) {
+      state.remixAfterFail = false;
+      loadRemix();
+      return;
+    }
+    state.remixAfterFail = false;
+    loadQuestion();
+  }
+
+  document.querySelectorAll(".topic[data-topic]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      const nextMode = btn.dataset.topic;
+      state.remixAfterFail = false;
+
+      // Leaving an active fight pauses it (progress is persisted).
+      if (bossFightActive() && nextMode !== "finalboss") {
+        if (nextMode === "nourish") {
+          promptNourishWeek();
+          return;
+        }
+        state.mode = nextMode;
+        setModeButtons();
+        loadQuestion();
+        return;
+      }
+
+      if (nextMode === "finalboss") {
+        const drill = P.syncBossDrillTopic && P.syncBossDrillTopic();
+        if (drill && !restoreBossRunFromStorage()) {
+          // Remaster the missed topic before starting a new fight.
+          state.mode = drill;
+          setModeButtons();
+          loadQuestion();
+          els.feedback.hidden = false;
+          els.feedback.className = "feedback no";
+          els.feedback.textContent = tTheme("boss_drill_blocked", {
+            topic: Q.TOPICS[drill] || drill,
+          });
+          return;
+        }
+        if (!restoreBossRunFromStorage()) {
+          state.boss = { active: false, queue: [], index: 0, status: null, real: false };
+        }
+        state.mode = "finalboss";
+      } else if (nextMode === "nourish") {
+        const drill = P.syncBossDrillTopic && P.syncBossDrillTopic();
+        if (drill) {
+          state.mode = drill;
+          setModeButtons();
+          loadQuestion();
+          return;
+        }
+        promptNourishWeek();
+        return;
+      } else {
+        const drill = P.syncBossDrillTopic && P.syncBossDrillTopic();
+        // While rebuilding after a defeat, stay on the missed topic only.
+        state.mode = drill || nextMode;
+      }
+      setModeButtons();
+      loadQuestion();
+    });
+  });
+
+  els.next.addEventListener("click", () => {
+    goToNextQuestion();
+  });
+  els.skip.addEventListener("click", () => {
+    if (state.mode === "finalboss" && state.boss.active) {
+      failBoss();
+      return;
+    }
+    if (state.retryPhase) {
+      finishAfterRetry(false, state.lastExpected);
+      return;
+    }
+    // Teach Me auto-opens hints — skipping must not punish mastery.
+    if (
+      state.mode !== "teachme" &&
+      state.fullQuestion &&
+      state.hintsUsed > 0 &&
+      !state.answered
+    ) {
+      P.recordHintSkip(state.fullQuestion, state.hintsUsed);
+      refreshProgress();
+    }
+    state.remixAfterFail = false;
+    loadQuestion();
+  });
+
+  els.reset.addEventListener("click", () => {
+    openResetProgressModal();
+  });
+
+  let resetSelectedTopic = null;
+
+  function closeResetProgressModal() {
+    if (els.resetModal) els.resetModal.hidden = true;
+    resetSelectedTopic = null;
+    if (els.resetTopicBtn) els.resetTopicBtn.disabled = true;
+  }
+
+  function openResetProgressModal() {
+    if (!els.resetModal || !els.resetTopicList) return;
+    resetSelectedTopic = null;
+    if (els.resetTopicBtn) els.resetTopicBtn.disabled = true;
+
+    const p = P.getProgressView();
+    const topics = p.topics || {};
+    els.resetTopicList.innerHTML = "";
+    Object.keys(topics).forEach(function (key) {
+      const info = topics[key];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "reset-topic-btn";
+      btn.dataset.topic = key;
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-selected", "false");
+
+      const label = document.createElement("span");
+      label.className = "reset-topic-btn-label";
+      label.textContent = info.label || (Q.TOPICS && Q.TOPICS[key]) || key;
+
+      const prog = document.createElement("span");
+      prog.className = "reset-topic-btn-progress";
+      prog.textContent =
+        (info.unaided_correct || 0) + "/" + (info.unaided_needed || 10);
+
+      btn.appendChild(label);
+      btn.appendChild(prog);
+      btn.addEventListener("click", function () {
+        resetSelectedTopic = key;
+        els.resetTopicList.querySelectorAll(".reset-topic-btn").forEach(function (el) {
+          const on = el.dataset.topic === key;
+          el.classList.toggle("selected", on);
+          el.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        if (els.resetTopicBtn) els.resetTopicBtn.disabled = false;
+      });
+      els.resetTopicList.appendChild(btn);
+    });
+
+    els.resetModal.hidden = false;
+    const first = els.resetTopicList.querySelector("button");
+    if (first) first.focus();
+  }
+
+  function applyFullReset() {
+    P.reset();
+    if (els.topicList) els.topicList.innerHTML = "";
+    closeResetProgressModal();
+    refreshProgress();
+    loadQuestion();
+  }
+
+  function applyTopicReset() {
+    if (!resetSelectedTopic || !P.resetTopic) return;
+    const topic = resetSelectedTopic;
+    P.resetTopic(topic);
+    closeResetProgressModal();
+    refreshProgress();
+    if (state.mode === topic) {
+      loadQuestion();
+    }
+  }
+
+  if (els.resetCancel) {
+    els.resetCancel.addEventListener("click", closeResetProgressModal);
+  }
+  if (els.resetClose) {
+    els.resetClose.addEventListener("click", closeResetProgressModal);
+  }
+  if (els.resetBackdrop) {
+    els.resetBackdrop.addEventListener("click", closeResetProgressModal);
+  }
+  if (els.resetAllBtn) {
+    els.resetAllBtn.addEventListener("click", applyFullReset);
+  }
+  if (els.resetTopicBtn) {
+    els.resetTopicBtn.addEventListener("click", applyTopicReset);
+  }
+
+  if (els.bossInviteFight) {
+    els.bossInviteFight.addEventListener("click", acceptBossInvite);
+  }
+  if (els.bossInviteLater) {
+    els.bossInviteLater.addEventListener("click", dismissBossInvite);
+  }
+  if (els.bossInviteClose) {
+    els.bossInviteClose.addEventListener("click", dismissBossInvite);
+  }
+  if (els.bossInviteBackdrop) {
+    els.bossInviteBackdrop.addEventListener("click", dismissBossInvite);
+  }
+
+  function cancelNourishWeekPrompt() {
+    closeNourishWeekModal(true);
+  }
+  if (els.nourishWeekCancel) {
+    els.nourishWeekCancel.addEventListener("click", cancelNourishWeekPrompt);
+  }
+  if (els.nourishWeekClose) {
+    els.nourishWeekClose.addEventListener("click", cancelNourishWeekPrompt);
+  }
+  if (els.nourishWeekBackdrop) {
+    els.nourishWeekBackdrop.addEventListener("click", cancelNourishWeekPrompt);
+  }
+  if (els.bossRetreatOk) {
+    els.bossRetreatOk.addEventListener("click", finishBossRetreat);
+  }
+  if (els.bossRetreatClose) {
+    els.bossRetreatClose.addEventListener("click", finishBossRetreat);
+  }
+  if (els.bossRetreatBackdrop) {
+    els.bossRetreatBackdrop.addEventListener("click", finishBossRetreat);
+  }
+
+  if (els.save) {
+    els.save.addEventListener("click", () => {
+      try {
+        const name = P.downloadProgressFile();
+        els.feedback.hidden = false;
+        els.feedback.className = "feedback ok";
+        els.feedback.textContent = t("save_ok", { file: name });
+      } catch (err) {
+        els.feedback.hidden = false;
+        els.feedback.className = "feedback no";
+        els.feedback.textContent = t("save_fail");
+        console.error(err);
+      }
+    });
+  }
+
+  if (els.load && els.progressFile) {
+    els.load.addEventListener("click", () => {
+      els.progressFile.value = "";
+      els.progressFile.click();
+    });
+    els.progressFile.addEventListener("change", () => {
+      const file = els.progressFile.files && els.progressFile.files[0];
+      if (!file) return;
+      if (!confirm(t("load_confirm"))) {
+        els.progressFile.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          P.importProgress(String(reader.result || ""));
+          els.topicList.innerHTML = "";
+          refreshProgress();
+          loadQuestion();
+          els.feedback.hidden = false;
+          els.feedback.className = "feedback ok";
+          els.feedback.textContent = t("load_ok");
+        } catch (err) {
+          els.feedback.hidden = false;
+          els.feedback.className = "feedback no";
+          els.feedback.textContent = t("progress_load_fail");
+          console.error(err);
+        }
+      };
+      reader.onerror = () => {
+        els.feedback.hidden = false;
+        els.feedback.className = "feedback no";
+        els.feedback.textContent = t("progress_load_fail");
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  // --- Scratch notes (persisted) + dataset tools ----------------------------
+  const NOTES_KEY =
+    window.Mat107Course && P.ASSESSMENT_ID
+      ? window.Mat107Course.notesStorageKey(P.ASSESSMENT_ID)
+      : "mat107-assessment1-notes";
+
+  function persistNotes() {
+    if (!els.notes) return;
+    try {
+      localStorage.setItem(NOTES_KEY, els.notes.value);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function setNotesStatus(msg, empty) {
+    if (!els.notesStatus) return;
+    if (!msg) {
+      els.notesStatus.hidden = true;
+      els.notesStatus.textContent = "";
+      return;
+    }
+    els.notesStatus.hidden = false;
+    els.notesStatus.textContent = msg;
+    els.notesStatus.classList.toggle("empty", Boolean(empty));
+  }
+
+  function parseNoteNumbers(text) {
+    const re = /-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/gi;
+    const out = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const n = parseFloat(m[0]);
+      if (!isNaN(n) && isFinite(n)) out.push(n);
+    }
+    return out;
+  }
+
+  function formatNoteNumber(n) {
+    if (Number.isInteger(n)) return String(n);
+    const s = String(Math.round(n * 1e10) / 1e10);
+    return s;
+  }
+
+  function notesTarget() {
+    const ta = els.notes;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (typeof start === "number" && typeof end === "number" && end > start) {
+      return {
+        mode: "selection",
+        start: start,
+        end: end,
+        text: ta.value.slice(start, end),
+      };
+    }
+    return { mode: "all", start: 0, end: ta.value.length, text: ta.value };
+  }
+
+  function replaceNotesTarget(target, replacement) {
+    const ta = els.notes;
+    const before = ta.value.slice(0, target.start);
+    const after = ta.value.slice(target.end);
+    ta.value = before + replacement + after;
+    const caret = before.length + replacement.length;
+    ta.focus();
+    ta.setSelectionRange(before.length, caret);
+    persistNotes();
+  }
+
+  function notesSumOf(nums) {
+    return nums.reduce(function (a, b) {
+      return a + b;
+    }, 0);
+  }
+
+  function updateNotesStatusFrom(nums) {
+    if (!nums.length) {
+      setNotesStatus(t("notes_status_empty"), true);
+      return;
+    }
+    setNotesStatus(
+      t("notes_status", {
+        n: nums.length,
+        sum: formatNoteNumber(notesSumOf(nums)),
+      })
+    );
+  }
+
+  function sortNumbersInPlace(text, desc) {
+    const re = /-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/gi;
+    const nums = [];
+    let m;
+    const finder = new RegExp(re.source, "gi");
+    while ((m = finder.exec(text)) !== null) {
+      const n = parseFloat(m[0]);
+      if (!isNaN(n) && isFinite(n)) nums.push(n);
+    }
+    if (!nums.length) return null;
+    const sorted = nums.slice().sort(function (a, b) {
+      return desc ? b - a : a - b;
+    });
+    let i = 0;
+    const out = text.replace(re, function () {
+      return formatNoteNumber(sorted[i++]);
+    });
+    return { text: out, nums: sorted };
+  }
+
+  function notesSort(desc) {
+    if (!els.notes) return;
+    const target = notesTarget();
+    const result = sortNumbersInPlace(target.text, desc);
+    if (!result) {
+      setNotesStatus(t("notes_status_empty"), true);
+      return;
+    }
+    replaceNotesTarget(target, result.text);
+    updateNotesStatusFrom(result.nums);
+  }
+
+  function notesAppendSum() {
+    if (!els.notes) return;
+    const target = notesTarget();
+    const nums = parseNoteNumbers(target.text);
+    if (!nums.length) {
+      setNotesStatus(t("notes_status_empty"), true);
+      return;
+    }
+    const line = t("notes_sum_line", {
+      n: nums.length,
+      sum: formatNoteNumber(notesSumOf(nums)),
+    });
+    const base = target.mode === "selection" ? target.text : els.notes.value;
+    const joined = (base.replace(/\s+$/, "") + "\n" + line).replace(/^\n/, "");
+    replaceNotesTarget(target, joined);
+    updateNotesStatusFrom(nums);
+  }
+
+  function notesAppendUnique() {
+    if (!els.notes) return;
+    const target = notesTarget();
+    const nums = parseNoteNumbers(target.text);
+    if (!nums.length) {
+      setNotesStatus(t("notes_status_empty"), true);
+      return;
+    }
+    const freq = {};
+    const order = [];
+    nums.forEach(function (n) {
+      const key = formatNoteNumber(n);
+      if (!Object.prototype.hasOwnProperty.call(freq, key)) {
+        freq[key] = 0;
+        order.push(key);
+      }
+      freq[key] += 1;
+    });
+    order.sort(function (a, b) {
+      return parseFloat(a) - parseFloat(b);
+    });
+    const list = order
+      .map(function (k) {
+        return k + (freq[k] > 1 ? "×" + freq[k] : "");
+      })
+      .join(", ");
+    const line = t("notes_unique_line", { list: list });
+    const base = target.mode === "selection" ? target.text : els.notes.value;
+    const joined = (base.replace(/\s+$/, "") + "\n" + line).replace(/^\n/, "");
+    replaceNotesTarget(target, joined);
+    updateNotesStatusFrom(nums);
+  }
+
+  if (els.notes) {
+    try {
+      els.notes.value = localStorage.getItem(NOTES_KEY) || "";
+    } catch (e) {
+      /* ignore */
+    }
+    els.notes.addEventListener("input", persistNotes);
+  }
+  if (els.notesSortAsc) {
+    els.notesSortAsc.addEventListener("click", () => notesSort(false));
+  }
+  if (els.notesSortDesc) {
+    els.notesSortDesc.addEventListener("click", () => notesSort(true));
+  }
+  if (els.notesSum) {
+    els.notesSum.addEventListener("click", notesAppendSum);
+  }
+  if (els.notesUnique) {
+    els.notesUnique.addEventListener("click", notesAppendUnique);
+  }
+
+  // --- Floating calculator (draggable / dockable) ---------------------------
+  const calcState = {
+    display: "0",
+    left: null,
+    op: null,
+    fresh: true,
+  };
+
+  const calcUi = {
+    x: null,
+    y: null,
+    dock: null, // null | "left" | "right"
+    dragging: false,
+    grabX: 0,
+    grabY: 0,
+  };
+
+  const CALC_SNAP = 36;
+
+  function calcRender() {
+    if (els.calcDisplay) els.calcDisplay.value = calcState.display;
+  }
+
+  function calcReset() {
+    calcState.display = "0";
+    calcState.left = null;
+    calcState.op = null;
+    calcState.fresh = true;
+    calcRender();
+  }
+
+  function calcApplyOp(a, b, op) {
+    if (op === "+") return a + b;
+    if (op === "-") return a - b;
+    if (op === "*") return a * b;
+    if (op === "/") return b === 0 ? NaN : a / b;
+    return b;
+  }
+
+  function calcFormat(n) {
+    if (!isFinite(n)) return "Error";
+    const rounded = Math.round(n * 1e10) / 1e10;
+    let s = String(rounded);
+    if (s.indexOf("e") >= 0) s = rounded.toPrecision(10);
+    if (s.length > 14) s = String(Number(rounded.toPrecision(12)));
+    return s;
+  }
+
+  function calcInputDigit(d) {
+    if (calcState.display === "Error") calcReset();
+    if (calcState.fresh || calcState.display === "0") {
+      calcState.display = d;
+      calcState.fresh = false;
+    } else if (calcState.display.length < 16) {
+      calcState.display += d;
+    }
+    calcRender();
+  }
+
+  function calcInputDot() {
+    if (calcState.display === "Error") calcReset();
+    if (calcState.fresh) {
+      calcState.display = "0.";
+      calcState.fresh = false;
+    } else if (calcState.display.indexOf(".") < 0) {
+      calcState.display += ".";
+    }
+    calcRender();
+  }
+
+  function calcSetOp(op) {
+    if (calcState.display === "Error") return;
+    const cur = parseFloat(calcState.display);
+    if (calcState.left != null && calcState.op && !calcState.fresh) {
+      const result = calcApplyOp(calcState.left, cur, calcState.op);
+      calcState.display = calcFormat(result);
+      calcState.left = isFinite(result) ? result : null;
+    } else {
+      calcState.left = cur;
+    }
+    calcState.op = op;
+    calcState.fresh = true;
+    calcRender();
+  }
+
+  function calcEquals() {
+    if (calcState.display === "Error") return;
+    if (calcState.left == null || !calcState.op) return;
+    const cur = parseFloat(calcState.display);
+    const result = calcApplyOp(calcState.left, cur, calcState.op);
+    calcState.display = calcFormat(result);
+    calcState.left = null;
+    calcState.op = null;
+    calcState.fresh = true;
+    calcRender();
+  }
+
+  function calcPanelSize() {
+    const el = els.calcModal;
+    if (!el) return { w: 320, h: 420 };
+    return {
+      w: el.offsetWidth || 320,
+      h: el.offsetHeight || 420,
+    };
+  }
+
+  function defaultCalcPosition() {
+    const { w, h } = calcPanelSize();
+    calcUi.x = Math.max(12, window.innerWidth - w - 16);
+    calcUi.y = Math.max(12, Math.min(120, window.innerHeight - h - 16));
+    calcUi.dock = null;
+  }
+
+  function applyCalcPosition() {
+    const el = els.calcModal;
+    if (!el || el.hidden) return;
+    const { w, h } = calcPanelSize();
+    const maxX = Math.max(0, window.innerWidth - w);
+    const maxY = Math.max(0, window.innerHeight - h);
+
+    if (calcUi.x == null || calcUi.y == null) defaultCalcPosition();
+
+    if (calcUi.dock === "left") {
+      calcUi.x = 0;
+    } else if (calcUi.dock === "right") {
+      calcUi.x = maxX;
+    } else {
+      calcUi.x = Math.min(maxX, Math.max(0, calcUi.x));
+    }
+    calcUi.y = Math.min(maxY, Math.max(0, calcUi.y));
+
+    el.classList.toggle("is-docked-left", calcUi.dock === "left");
+    el.classList.toggle("is-docked-right", calcUi.dock === "right");
+    el.style.left = calcUi.x + "px";
+    el.style.top = calcUi.y + "px";
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+  }
+
+  function snapCalcDock() {
+    const { w } = calcPanelSize();
+    const maxX = Math.max(0, window.innerWidth - w);
+    if (calcUi.x <= CALC_SNAP) {
+      calcUi.dock = "left";
+      calcUi.x = 0;
+    } else if (calcUi.x >= maxX - CALC_SNAP) {
+      calcUi.dock = "right";
+      calcUi.x = maxX;
+    } else {
+      calcUi.dock = null;
+    }
+  }
+
+  function openCalcModal() {
+    if (!els.calcModal) return;
+    els.calcModal.hidden = false;
+    els.calcModal.style.zIndex = "91";
+    if (els.excelModal && !els.excelModal.hidden) {
+      els.excelModal.style.zIndex = "90";
+    }
+    if (calcUi.x == null || calcUi.y == null) defaultCalcPosition();
+    applyCalcPosition();
+    calcRender();
+  }
+
+  function closeCalcModal() {
+    if (!els.calcModal) return;
+    els.calcModal.hidden = true;
+    els.calcModal.classList.remove("is-dragging");
+    calcUi.dragging = false;
+  }
+
+  if (els.calcOpen) {
+    els.calcOpen.addEventListener("click", openCalcModal);
+  }
+  if (els.calcClose) {
+    els.calcClose.addEventListener("click", closeCalcModal);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (els.resetModal && !els.resetModal.hidden) {
+      closeResetProgressModal();
+      return;
+    }
+    if (els.nourishWeekModal && !els.nourishWeekModal.hidden) {
+      cancelNourishWeekPrompt();
+      return;
+    }
+    if (els.bossRetreatModal && !els.bossRetreatModal.hidden) {
+      finishBossRetreat();
+      return;
+    }
+    if (els.bossInviteModal && !els.bossInviteModal.hidden) {
+      dismissBossInvite();
+      return;
+    }
+    if (els.excelModal && !els.excelModal.hidden) {
+      closeExcelModal();
+      return;
+    }
+    if (els.calcModal && !els.calcModal.hidden) {
+      closeCalcModal();
+    }
+  });
+  window.addEventListener("resize", () => {
+    if (els.calcModal && !els.calcModal.hidden) applyCalcPosition();
+    if (els.excelModal && !els.excelModal.hidden) applyExcelPosition();
+  });
+
+  const calcHandle = document.getElementById("calc-drag-handle");
+  if (calcHandle && els.calcModal) {
+    calcHandle.addEventListener("pointerdown", (e) => {
+      if (e.button != null && e.button !== 0) return;
+      if (e.target.closest && e.target.closest("button")) return;
+      const rect = els.calcModal.getBoundingClientRect();
+      calcUi.dragging = true;
+      calcUi.dock = null;
+      calcUi.grabX = e.clientX - rect.left;
+      calcUi.grabY = e.clientY - rect.top;
+      els.calcModal.classList.add("is-dragging");
+      calcHandle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    calcHandle.addEventListener("pointermove", (e) => {
+      if (!calcUi.dragging) return;
+      calcUi.x = e.clientX - calcUi.grabX;
+      calcUi.y = e.clientY - calcUi.grabY;
+      applyCalcPosition();
+    });
+    function endCalcDrag(e) {
+      if (!calcUi.dragging) return;
+      calcUi.dragging = false;
+      els.calcModal.classList.remove("is-dragging");
+      try {
+        calcHandle.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+      snapCalcDock();
+      applyCalcPosition();
+    }
+    calcHandle.addEventListener("pointerup", endCalcDrag);
+    calcHandle.addEventListener("pointercancel", endCalcDrag);
+  }
+
+  if (els.calcKeys) {
+    els.calcKeys.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-calc]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-calc");
+      if (action === "digit") calcInputDigit(btn.getAttribute("data-digit"));
+      else if (action === "dot") calcInputDot();
+      else if (action === "clear") calcReset();
+      else if (action === "back") {
+        if (calcState.fresh || calcState.display === "Error") {
+          calcReset();
+        } else if (calcState.display.length <= 1) {
+          calcState.display = "0";
+          calcState.fresh = true;
+          calcRender();
+        } else {
+          calcState.display = calcState.display.slice(0, -1);
+          calcRender();
+        }
+      } else if (action === "op") calcSetOp(btn.getAttribute("data-op"));
+      else if (action === "eq") calcEquals();
+      else if (action === "pi") {
+        calcState.display = "3.14";
+        calcState.fresh = true;
+        calcRender();
+      } else if (action === "sign") {
+        if (calcState.display === "0" || calcState.display === "Error") return;
+        calcState.display =
+          calcState.display.charAt(0) === "-"
+            ? calcState.display.slice(1)
+            : "-" + calcState.display;
+        calcRender();
+      } else if (action === "sq") {
+        const n = parseFloat(calcState.display);
+        calcState.display = calcFormat(n * n);
+        calcState.fresh = true;
+        calcState.left = null;
+        calcState.op = null;
+        calcRender();
+      } else if (action === "sqrt") {
+        const n = parseFloat(calcState.display);
+        calcState.display = n < 0 ? "Error" : calcFormat(Math.sqrt(n));
+        calcState.fresh = true;
+        calcState.left = null;
+        calcState.op = null;
+        calcRender();
+      }
+    });
+  }
+
+  // --- Floating Excel scratch sheet (draggable / dockable) -------------------
+  const EXCEL_COLS = ["A", "B", "C", "D"];
+  const EXCEL_ROWS = 8;
+  const EXCEL_SNAP = 36;
+
+  const excelScratch = {
+    ready: false,
+    active: "A1",
+    cells: {}, // ref -> { raw: string }
+    colWidths: { A: 88, B: 88, C: 88, D: 88 },
+  };
+
+  const excelUi = {
+    x: null,
+    y: null,
+    dock: null,
+    dragging: false,
+    grabX: 0,
+    grabY: 0,
+    resizingCol: null,
+    resizeStartX: 0,
+    resizeStartW: 0,
+  };
+
+  function excelFormatNumber(n) {
+    if (!isFinite(n)) return "#VALUE!";
+    const rounded = Math.round(n * 1e10) / 1e10;
+    let s = String(rounded);
+    if (s.indexOf("e") >= 0) s = rounded.toPrecision(10);
+    if (s.length > 14) s = String(Number(rounded.toPrecision(12)));
+    return s;
+  }
+
+  function excelParseRef(ref) {
+    const m = String(ref || "")
+      .toUpperCase()
+      .match(/^([A-Z]+)(\d+)$/);
+    if (!m) return null;
+    return { col: m[1], row: parseInt(m[2], 10) };
+  }
+
+  function excelColIndex(col) {
+    return EXCEL_COLS.indexOf(String(col || "").toUpperCase());
+  }
+
+  function excelExpandRange(a, b) {
+    const ra = excelParseRef(a);
+    const rb = excelParseRef(b);
+    if (!ra || !rb) return [];
+    const c0 = Math.min(excelColIndex(ra.col), excelColIndex(rb.col));
+    const c1 = Math.max(excelColIndex(ra.col), excelColIndex(rb.col));
+    const r0 = Math.min(ra.row, rb.row);
+    const r1 = Math.max(ra.row, rb.row);
+    if (c0 < 0 || c1 < 0) return [];
+    const out = [];
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        out.push(EXCEL_COLS[c] + r);
+      }
+    }
+    return out;
+  }
+
+  function excelRaw(ref) {
+    const cell = excelScratch.cells[String(ref || "").toUpperCase()];
+    return cell && cell.raw != null ? String(cell.raw) : "";
+  }
+
+  function excelSafeArith(expr) {
+    const cleaned = String(expr || "")
+      .replace(/\s+/g, "")
+      .replace(/−/g, "-")
+      .replace(/×/g, "*")
+      .replace(/÷/g, "/");
+    if (!cleaned || !/^[\d+\-*/().]+$/.test(cleaned)) return NaN;
+    try {
+      const n = Function('"use strict"; return (' + cleaned + ");")();
+      return typeof n === "number" ? n : NaN;
+    } catch (err) {
+      return NaN;
+    }
+  }
+
+  /** Excel postfix %: 7.8% → 0.078, (10+5)% → 0.15 */
+  function excelExpandPercents(expr) {
+    let s = String(expr || "").replace(/\s+/g, "");
+    let guard = 0;
+    while (s.indexOf("%") >= 0 && guard++ < 40) {
+      const withNums = s.replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
+      if (withNums !== s) {
+        s = withNums;
+        continue;
+      }
+      const idx = s.indexOf(")%");
+      if (idx < 0) return null;
+      let depth = 0;
+      let start = -1;
+      for (let i = idx; i >= 0; i--) {
+        const ch = s.charAt(i);
+        if (ch === ")") depth++;
+        else if (ch === "(") {
+          depth--;
+          if (depth === 0) {
+            start = i;
+            break;
+          }
+        }
+      }
+      if (start < 0) return null;
+      const group = s.slice(start, idx + 1);
+      s = s.slice(0, start) + "(" + group + "/100)" + s.slice(idx + 2);
+    }
+    return s;
+  }
+
+  function excelParseNumberLiteral(raw) {
+    let s = String(raw == null ? "" : raw)
+      .trim()
+      .replace(/,/g, "");
+    const pct = /%\s*$/.test(s);
+    if (pct) s = s.replace(/%\s*$/, "");
+    const n = parseFloat(s);
+    if (!isFinite(n)) return NaN;
+    return pct ? n / 100 : n;
+  }
+
+  function excelMatchCall(s, start) {
+    const open = s.indexOf("(", start);
+    if (open < 0) return null;
+    let depth = 0;
+    for (let i = open; i < s.length; i++) {
+      const ch = s.charAt(i);
+      if (ch === "(") depth++;
+      else if (ch === ")") {
+        depth--;
+        if (depth === 0) {
+          return { open: open, close: i, args: s.slice(open + 1, i) };
+        }
+      }
+    }
+    return null;
+  }
+
+  function excelEvalFnName(name, vals) {
+    const n = String(name || "").toUpperCase();
+    const nums = (vals || []).filter(function (v) {
+      return isFinite(v);
+    });
+    if (n === "SUM") {
+      return nums.reduce(function (a, b) {
+        return a + b;
+      }, 0);
+    }
+    if (n === "AVERAGE" || n === "AVG") {
+      return nums.length
+        ? nums.reduce(function (a, b) {
+            return a + b;
+          }, 0) / nums.length
+        : NaN;
+    }
+    if (n === "PRODUCT") {
+      return nums.reduce(function (a, b) {
+        return a * b;
+      }, 1);
+    }
+    if (n === "MIN") return nums.length ? Math.min.apply(null, nums) : NaN;
+    if (n === "MAX") return nums.length ? Math.max.apply(null, nums) : NaN;
+    if (n === "ABS") return nums.length ? Math.abs(nums[0]) : NaN;
+    return NaN;
+  }
+
+  function excelEvalRef(ref, stack) {
+    const key = String(ref || "").toUpperCase();
+    if (!key) return 0;
+    if (stack.indexOf(key) >= 0) return NaN;
+    const raw = excelRaw(key).trim();
+    if (!raw) return 0;
+    if (raw.charAt(0) === "=") {
+      return excelEvalFormula(raw.slice(1), stack.concat([key]));
+    }
+    const n = excelParseNumberLiteral(raw);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function excelEvalArgs(argsStr, stack) {
+    const parts = [];
+    let cur = "";
+    let depth = 0;
+    for (let i = 0; i < argsStr.length; i++) {
+      const ch = argsStr.charAt(i);
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) {
+        parts.push(cur.trim());
+        cur = "";
+        continue;
+      }
+      cur += ch;
+    }
+    if (cur.trim()) parts.push(cur.trim());
+    const vals = [];
+    parts.forEach(function (part) {
+      const range = part.match(/^([A-Za-z]+\d+)\s*:\s*([A-Za-z]+\d+)$/);
+      if (range) {
+        excelExpandRange(range[1], range[2]).forEach(function (r) {
+          vals.push(excelEvalRef(r, stack));
+        });
+      } else if (/^[A-Za-z]+\d+$/.test(part)) {
+        vals.push(excelEvalRef(part, stack));
+      } else {
+        vals.push(excelEvalFormula(part, stack));
+      }
+    });
+    return vals;
+  }
+
+  /** Replace embedded SUM(...)/AVERAGE(...)/… calls with numeric literals. */
+  function excelReplaceFunctions(expr, stack) {
+    let s = String(expr || "");
+    const fnRe = /(SUM|AVERAGE|AVG|PRODUCT|MIN|MAX|ABS)\s*\(/gi;
+    let guard = 0;
+    while (guard++ < 40) {
+      fnRe.lastIndex = 0;
+      const m = fnRe.exec(s);
+      if (!m) break;
+      const nameStart = m.index;
+      const call = excelMatchCall(s, nameStart);
+      if (!call) break;
+      const name = m[1];
+      const vals = excelEvalArgs(call.args, stack);
+      const n = excelEvalFnName(name, vals);
+      const lit = isFinite(n) ? String(n) : "NaN";
+      s = s.slice(0, nameStart) + lit + s.slice(call.close + 1);
+    }
+    return s;
+  }
+
+  function excelEvalFormula(expr, stack) {
+    let s = String(expr || "").trim();
+    if (!s) return 0;
+
+    s = excelReplaceFunctions(s, stack);
+    if (/\bNaN\b/.test(s)) return NaN;
+
+    s = s.replace(/\$([A-Za-z]+)\$?(\d+)/g, "$1$2");
+    s = s.replace(/([A-Za-z]+\d+)/g, function (m) {
+      const n = excelEvalRef(m, stack);
+      return isFinite(n) ? String(n) : "NaN";
+    });
+    if (/\bNaN\b/.test(s)) return NaN;
+
+    s = excelExpandPercents(s);
+    if (s == null || /\bNaN\b/.test(s)) return NaN;
+    return excelSafeArith(s);
+  }
+
+  function excelDisplayFor(ref) {
+    const raw = excelRaw(ref).trim();
+    if (!raw) return "";
+    if (raw.charAt(0) === "=") {
+      const n = excelEvalFormula(raw.slice(1), [String(ref).toUpperCase()]);
+      return excelFormatNumber(n);
+    }
+    return raw;
+  }
+
+  function excelApplyColWidths() {
+    if (!els.excelGrid) return;
+    EXCEL_COLS.forEach(function (col) {
+      const w = excelScratch.colWidths[col] || 88;
+      els.excelGrid.querySelectorAll('[data-excel-col="' + col + '"]').forEach(
+        function (el) {
+          el.style.width = w + "px";
+          el.style.minWidth = w + "px";
+          el.style.maxWidth = w + "px";
+        }
+      );
+    });
+  }
+
+  function excelStartColResize(col, e) {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    excelUi.resizingCol = col;
+    excelUi.resizeStartX = e.clientX;
+    excelUi.resizeStartW = excelScratch.colWidths[col] || 88;
+    document.body.classList.add("excel-col-resizing");
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+  }
+
+  function excelMoveColResize(e) {
+    if (!excelUi.resizingCol) return;
+    const col = excelUi.resizingCol;
+    const next = Math.max(
+      48,
+      Math.min(280, excelUi.resizeStartW + (e.clientX - excelUi.resizeStartX))
+    );
+    excelScratch.colWidths[col] = next;
+    excelApplyColWidths();
+  }
+
+  function excelEndColResize(e) {
+    if (!excelUi.resizingCol) return;
+    excelUi.resizingCol = null;
+    document.body.classList.remove("excel-col-resizing");
+    if (e && e.currentTarget) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+    }
+  }
+
+  function excelCopyActive(asRaw) {
+    const ref = excelScratch.active;
+    const raw = excelRaw(ref);
+    let text = "";
+    if (asRaw) text = raw;
+    else if (raw.charAt(0) === "=") text = excelDisplayFor(ref);
+    else text = raw;
+    if (text == null) text = "";
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(String(text)).catch(function () {
+        /* ignore */
+      });
+    }
+    return Promise.resolve();
+  }
+
+  function excelPasteText(text) {
+    const parsed = excelParseRef(excelScratch.active);
+    if (!parsed) return;
+    const startCi = excelColIndex(parsed.col);
+    const startRi = parsed.row;
+    const rows = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n");
+    // Drop a trailing empty line from spreadsheet exports
+    if (rows.length && rows[rows.length - 1] === "") rows.pop();
+    if (!rows.length) return;
+
+    let lastRef = excelScratch.active;
+    rows.forEach(function (line, rOff) {
+      const cols = line.split("\t");
+      cols.forEach(function (val, cOff) {
+        const ci = startCi + cOff;
+        const ri = startRi + rOff;
+        if (ci < 0 || ci >= EXCEL_COLS.length) return;
+        if (ri < 1 || ri > EXCEL_ROWS) return;
+        const ref = EXCEL_COLS[ci] + ri;
+        const trimmed = String(val);
+        if (!trimmed.trim()) delete excelScratch.cells[ref];
+        else excelScratch.cells[ref] = { raw: trimmed };
+        lastRef = ref;
+      });
+    });
+    excelSelectCell(lastRef, true);
+    if (els.excelFormula) els.excelFormula.value = excelRaw(lastRef);
+    excelRefreshDisplays();
+  }
+
+  function excelModalOpen() {
+    return Boolean(els.excelModal && !els.excelModal.hidden);
+  }
+
+  function excelFormulaHasSelection() {
+    if (!els.excelFormula) return false;
+    const el = els.excelFormula;
+    if (document.activeElement !== el) return false;
+    return el.selectionStart !== el.selectionEnd;
+  }
+
+  function excelCellEl(ref) {
+    if (!els.excelGrid) return null;
+    return els.excelGrid.querySelector('[data-cell="' + ref + '"]');
+  }
+
+  function excelRefreshDisplays() {
+    EXCEL_COLS.forEach(function (col) {
+      for (let r = 1; r <= EXCEL_ROWS; r++) {
+        const ref = col + r;
+        const td = excelCellEl(ref);
+        if (!td) continue;
+        td.textContent = excelDisplayFor(ref);
+        td.classList.toggle("excel-cell--active", ref === excelScratch.active);
+        td.classList.toggle("excel-cell--has-value", !!excelRaw(ref));
+      }
+    });
+  }
+
+  function excelSelectCell(ref, focusFormula) {
+    const parsed = excelParseRef(ref);
+    if (!parsed || excelColIndex(parsed.col) < 0) return;
+    if (parsed.row < 1 || parsed.row > EXCEL_ROWS) return;
+    excelScratch.active = parsed.col + parsed.row;
+    if (els.excelNameBox) els.excelNameBox.textContent = excelScratch.active;
+    if (els.excelFormula) {
+      els.excelFormula.value = excelRaw(excelScratch.active);
+      if (focusFormula !== false) els.excelFormula.focus();
+    }
+    if (els.excelTip) {
+      els.excelTip.textContent = excelTipForInput(
+        els.excelFormula ? els.excelFormula.value : "",
+        t("excel_formula_tip_default")
+      );
+    }
+    excelRefreshDisplays();
+  }
+
+  function excelCommitActive() {
+    if (!els.excelFormula) return;
+    const ref = excelScratch.active;
+    const raw = els.excelFormula.value;
+    if (!String(raw).trim()) {
+      delete excelScratch.cells[ref];
+    } else {
+      excelScratch.cells[ref] = { raw: String(raw) };
+    }
+    excelRefreshDisplays();
+    if (els.excelTip) {
+      els.excelTip.textContent = excelTipForInput(
+        raw,
+        t("excel_formula_tip_default")
+      );
+    }
+  }
+
+  function excelMoveActive(dCol, dRow) {
+    const parsed = excelParseRef(excelScratch.active);
+    if (!parsed) return;
+    const ci = excelColIndex(parsed.col) + dCol;
+    const ri = parsed.row + dRow;
+    if (ci < 0 || ci >= EXCEL_COLS.length) return;
+    if (ri < 1 || ri > EXCEL_ROWS) return;
+    excelCommitActive();
+    excelSelectCell(EXCEL_COLS[ci] + ri, true);
+  }
+
+  function buildExcelScratchGrid() {
+    if (!els.excelGrid || excelScratch.ready) return;
+    els.excelGrid.innerHTML = "";
+
+    const colgroup = document.createElement("colgroup");
+    const cornerCol = document.createElement("col");
+    cornerCol.className = "excel-corner-col";
+    cornerCol.style.width = "2.4rem";
+    colgroup.appendChild(cornerCol);
+    EXCEL_COLS.forEach(function (col) {
+      const c = document.createElement("col");
+      c.dataset.excelCol = col;
+      colgroup.appendChild(c);
+    });
+    els.excelGrid.appendChild(colgroup);
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const corner = document.createElement("th");
+    corner.className = "excel-corner";
+    headRow.appendChild(corner);
+    EXCEL_COLS.forEach(function (col) {
+      const th = document.createElement("th");
+      th.className = "excel-col-head";
+      th.dataset.excelCol = col;
+      th.title = t("excel_resize_col_hint");
+
+      const label = document.createElement("span");
+      label.className = "excel-col-label";
+      label.textContent = col;
+      th.appendChild(label);
+
+      const handle = document.createElement("span");
+      handle.className = "excel-col-resize";
+      handle.setAttribute("aria-hidden", "true");
+      handle.addEventListener("pointerdown", function (e) {
+        excelStartColResize(col, e);
+      });
+      handle.addEventListener("pointermove", excelMoveColResize);
+      handle.addEventListener("pointerup", excelEndColResize);
+      handle.addEventListener("pointercancel", excelEndColResize);
+      th.appendChild(handle);
+
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    els.excelGrid.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (let r = 1; r <= EXCEL_ROWS; r++) {
+      const tr = document.createElement("tr");
+      const rowHead = document.createElement("th");
+      rowHead.className = "excel-row-head";
+      rowHead.textContent = String(r);
+      tr.appendChild(rowHead);
+      EXCEL_COLS.forEach(function (col) {
+        const td = document.createElement("td");
+        const ref = col + r;
+        td.className = "excel-cell";
+        td.dataset.cell = ref;
+        td.dataset.excelCol = col;
+        td.tabIndex = -1;
+        td.addEventListener("mousedown", function (e) {
+          e.preventDefault();
+          excelCommitActive();
+          excelSelectCell(ref, true);
+        });
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    els.excelGrid.appendChild(tbody);
+    excelScratch.ready = true;
+    excelApplyColWidths();
+    excelSelectCell("A1", false);
+  }
+
+  function excelPanelSize() {
+    const el = els.excelModal;
+    if (!el) return { w: 420, h: 420 };
+    return {
+      w: el.offsetWidth || 420,
+      h: el.offsetHeight || 420,
+    };
+  }
+
+  function defaultExcelPosition() {
+    const { w, h } = excelPanelSize();
+    excelUi.x = 16;
+    excelUi.y = Math.max(12, Math.min(100, window.innerHeight - h - 16));
+    excelUi.dock = null;
+  }
+
+  function applyExcelPosition() {
+    const el = els.excelModal;
+    if (!el || el.hidden) return;
+    const { w, h } = excelPanelSize();
+    const maxX = Math.max(0, window.innerWidth - w);
+    const maxY = Math.max(0, window.innerHeight - h);
+
+    if (excelUi.x == null || excelUi.y == null) defaultExcelPosition();
+
+    if (excelUi.dock === "left") {
+      excelUi.x = 0;
+    } else if (excelUi.dock === "right") {
+      excelUi.x = maxX;
+    } else {
+      excelUi.x = Math.min(maxX, Math.max(0, excelUi.x));
+    }
+    excelUi.y = Math.min(maxY, Math.max(0, excelUi.y));
+
+    el.classList.toggle("is-docked-left", excelUi.dock === "left");
+    el.classList.toggle("is-docked-right", excelUi.dock === "right");
+    el.style.left = excelUi.x + "px";
+    el.style.top = excelUi.y + "px";
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+  }
+
+  function snapExcelDock() {
+    const { w } = excelPanelSize();
+    const maxX = Math.max(0, window.innerWidth - w);
+    if (excelUi.x <= EXCEL_SNAP) {
+      excelUi.dock = "left";
+      excelUi.x = 0;
+    } else if (excelUi.x >= maxX - EXCEL_SNAP) {
+      excelUi.dock = "right";
+      excelUi.x = maxX;
+    } else {
+      excelUi.dock = null;
+    }
+  }
+
+  function openExcelModal() {
+    if (!els.excelModal) return;
+    buildExcelScratchGrid();
+    els.excelModal.hidden = false;
+    els.excelModal.style.zIndex = "91";
+    if (els.calcModal && !els.calcModal.hidden) {
+      els.calcModal.style.zIndex = "90";
+    }
+    if (excelUi.x == null || excelUi.y == null) defaultExcelPosition();
+    applyExcelPosition();
+    excelSelectCell(excelScratch.active || "A1", true);
+  }
+
+  function closeExcelModal() {
+    if (!els.excelModal) return;
+    excelCommitActive();
+    els.excelModal.hidden = true;
+    els.excelModal.classList.remove("is-dragging");
+    excelUi.dragging = false;
+  }
+
+  if (els.excelOpen) {
+    els.excelOpen.addEventListener("click", openExcelModal);
+  }
+  if (els.excelClose) {
+    els.excelClose.addEventListener("click", closeExcelModal);
+  }
+  if (els.excelFormula) {
+    els.excelFormula.addEventListener("input", function () {
+      if (els.excelTip) {
+        els.excelTip.textContent = excelTipForInput(
+          els.excelFormula.value,
+          t("excel_formula_tip_default")
+        );
+      }
+      const ref = excelScratch.active;
+      const raw = els.excelFormula.value;
+      if (!String(raw).trim()) delete excelScratch.cells[ref];
+      else excelScratch.cells[ref] = { raw: String(raw) };
+      const td = excelCellEl(ref);
+      if (td) {
+        td.textContent =
+          raw.charAt(0) === "=" ? raw : excelDisplayFor(ref) || raw;
+        td.classList.add("excel-cell--active");
+      }
+    });
+    els.excelFormula.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        excelCommitActive();
+        excelMoveActive(0, 1);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        excelCommitActive();
+        excelMoveActive(e.shiftKey ? -1 : 1, 0);
+      } else if (e.key === "ArrowDown" && !e.altKey) {
+        e.preventDefault();
+        excelCommitActive();
+        excelMoveActive(0, 1);
+      } else if (e.key === "ArrowUp" && !e.altKey) {
+        e.preventDefault();
+        excelCommitActive();
+        excelMoveActive(0, -1);
+      }
+    });
+    els.excelFormula.addEventListener("blur", function () {
+      excelCommitActive();
+    });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (!excelModalOpen()) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const key = String(e.key || "").toLowerCase();
+    if (key === "c") {
+      if (excelFormulaHasSelection()) return;
+      e.preventDefault();
+      excelCopyActive(e.shiftKey);
+    } else if (key === "v") {
+      // Let the formula bar handle native paste when editing text with a caret;
+      // still intercept so multi-cell TSV paste works when nothing is selected.
+      if (excelFormulaHasSelection()) return;
+      if (
+        document.activeElement === els.excelFormula &&
+        els.excelFormula &&
+        els.excelFormula.value &&
+        els.excelFormula.selectionStart !== 0
+      ) {
+        // Mid-field paste: keep native single-value paste
+        return;
+      }
+      // Clipboard read requires paste event; mark for paste handler via flag.
+      // Fall through — the paste event will fire next for Ctrl+V.
+    }
+  });
+
+  document.addEventListener("copy", function (e) {
+    if (!excelModalOpen()) return;
+    if (excelFormulaHasSelection()) return;
+    const raw = excelRaw(excelScratch.active);
+    const text =
+      raw.charAt(0) === "=" ? excelDisplayFor(excelScratch.active) : raw;
+    if (e.clipboardData) {
+      e.clipboardData.setData("text/plain", String(text || ""));
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("paste", function (e) {
+    if (!excelModalOpen()) return;
+    if (excelFormulaHasSelection()) return;
+    if (!e.clipboardData) return;
+    const text = e.clipboardData.getData("text/plain");
+    if (text == null || text === "") return;
+    // Multi-cell / TSV from Excel, or whole-cell replace when formula empty/selected-all
+    const multi = /\t|\n|\r/.test(text);
+    const formulaEl = els.excelFormula;
+    const wholeReplace =
+      !formulaEl ||
+      document.activeElement !== formulaEl ||
+      !formulaEl.value ||
+      (formulaEl.selectionStart === 0 &&
+        formulaEl.selectionEnd === formulaEl.value.length);
+    if (!multi && !wholeReplace) return;
+    e.preventDefault();
+    excelCommitActive();
+    excelPasteText(text);
+  });
+
+  const excelHandle = document.getElementById("excel-drag-handle");
+  if (excelHandle && els.excelModal) {
+    excelHandle.addEventListener("pointerdown", (e) => {
+      if (e.button != null && e.button !== 0) return;
+      if (e.target.closest && e.target.closest("button")) return;
+      const rect = els.excelModal.getBoundingClientRect();
+      excelUi.dragging = true;
+      excelUi.dock = null;
+      excelUi.grabX = e.clientX - rect.left;
+      excelUi.grabY = e.clientY - rect.top;
+      els.excelModal.classList.add("is-dragging");
+      els.excelModal.style.zIndex = "91";
+      excelHandle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    excelHandle.addEventListener("pointermove", (e) => {
+      if (!excelUi.dragging) return;
+      excelUi.x = e.clientX - excelUi.grabX;
+      excelUi.y = e.clientY - excelUi.grabY;
+      applyExcelPosition();
+    });
+    function endExcelDrag(e) {
+      if (!excelUi.dragging) return;
+      excelUi.dragging = false;
+      els.excelModal.classList.remove("is-dragging");
+      try {
+        excelHandle.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+      snapExcelDock();
+      applyExcelPosition();
+    }
+    excelHandle.addEventListener("pointerup", endExcelDrag);
+    excelHandle.addEventListener("pointercancel", endExcelDrag);
+  }
+
+  function applyAssessmentBranding() {
+    const id = (P && P.ASSESSMENT_ID) || "assessment1";
+    const course = window.Mat107Course;
+    const brandSub = document.querySelector(".brand-sub");
+    const backLink = document.querySelector(".brand-link");
+    if (!course || !course.getAssessment) return;
+    const assessment = course.getAssessment(id);
+    if (!assessment) return;
+    if (brandSub) {
+      brandSub.textContent = t(assessment.brandSubKey || assessment.titleKey);
+    }
+    if (backLink && assessment.backKey) {
+      backLink.textContent = t(assessment.backKey);
+    }
+    const titleKey =
+      assessment.pageTitleKey || "assessment." + assessment.number + ".page_title";
+    if (I18n && I18n.has && I18n.has(titleKey)) {
+      document.title = t(titleKey);
+    }
+    const inviteTitle = document.getElementById("boss-invite-title");
+    if (inviteTitle) inviteTitle.textContent = tTheme("boss_invite_title");
+    if (els.bossInviteModal) {
+      const inviteFace = els.bossInviteModal.querySelector(".boss-invite-face");
+      if (inviteFace) inviteFace.textContent = bossEmoji("live");
+    }
+  }
+
+  function applyAssessmentFeatures() {
+    const course = window.Mat107Course;
+    const id = (P && P.ASSESSMENT_ID) || "assessment1";
+    const assessment = course && course.getAssessment ? course.getAssessment(id) : null;
+    const features = (assessment && assessment.features) || {
+      flashcards: true,
+      notecard: true,
+      boss: true,
+    };
+    const flashBtn = document.querySelector('[data-topic="flashcards"]');
+    if (flashBtn) flashBtn.hidden = !features.flashcards;
+    if (els.nourishBtn) els.nourishBtn.hidden = features.nourish !== true;
+    const notecardLink =
+      document.getElementById("notecard-link") ||
+      document.querySelector('a[href="notecard.html"]');
+    const notecardNote = document.querySelector(".notecard-note");
+    if (notecardLink) {
+      notecardLink.hidden = !features.notecard;
+      if (features.notecard && features.notecardHref) {
+        notecardLink.setAttribute("href", features.notecardHref);
+      }
+    }
+    if (notecardNote) notecardNote.hidden = !features.notecard;
+    const reviewLink = document.getElementById("review-link");
+    if (reviewLink) {
+      const reviewHref = features.reviewHref;
+      if (reviewHref) {
+        reviewLink.hidden = false;
+        reviewLink.setAttribute("href", reviewHref);
+      } else {
+        reviewLink.hidden = true;
+      }
+    }
+    if (els.finalBossBtn) els.finalBossBtn.hidden = features.boss === false;
+  }
+
+  function start() {
+    if (I18n && I18n.applyStatic) I18n.applyStatic();
+    applyAssessmentBranding();
+    applyAssessmentFeatures();
+    hideBossFace();
+    state.nourishWeekId = readStoredNourishWeek();
+    if (restoreBossRunFromStorage()) {
+      state.mode = "finalboss";
+    } else {
+      try {
+        const params = new URLSearchParams(location.search);
+        if (
+          params.get("mode") === "nourish" &&
+          els.nourishBtn &&
+          !els.nourishBtn.hidden
+        ) {
+          if (state.nourishWeekId) {
+            state.mode = "nourish";
+            refreshProgress();
+            setModeButtons();
+            loadQuestion();
+            els.feedback.hidden = false;
+            els.feedback.className = "feedback ok";
+            els.feedback.textContent = t("nourish_started", {
+              week: nourishWeekLabel(state.nourishWeekId),
+            });
+            return;
+          }
+          promptNourishWeek();
+          refreshProgress();
+          setModeButtons();
+          return;
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    refreshProgress();
+    setModeButtons();
+    loadQuestion();
+  }
+
+  if (I18n && I18n.ready && typeof I18n.ready.then === "function") {
+    I18n.ready.then(start);
+  } else {
+    start();
+  }
+})();

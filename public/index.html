@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CyberForce 101 · Practice Lab</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .cf-hero { position: relative; overflow: hidden; padding: clamp(2rem, 6vw, 4.5rem); background: linear-gradient(135deg, #293342, #3e4856); color: #fff; border-radius: var(--radius); box-shadow: var(--shadow); }
+    .cf-hero::after { content: ""; position: absolute; width: 30rem; height: 10rem; right: -7rem; top: 2rem; transform: rotate(-25deg); background: #147cc1; box-shadow: 0 7rem 0 #a61f24; opacity: .9; }
+    .cf-hero > * { position: relative; z-index: 1; max-width: 46rem; }
+    .cf-kicker { margin: 0 0 .7rem; color: #7dc5f5; font: 600 .78rem var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .cf-hero h1 { margin: 0 0 1rem; font: 700 clamp(2.5rem, 7vw, 5rem)/.95 var(--display); max-width: 12ch; }
+    .cf-hero p { max-width: 55ch; color: #d8e3ed; line-height: 1.6; }
+    .cf-hero .primary { margin-top: 1rem; background: #147cc1; border-color: #147cc1; }
+    .cf-section { margin-top: 2rem; }
+    .cf-section h2 { font-family: var(--display); margin: 0 0 .45rem; }
+    .cf-section > p { max-width: 65ch; }
+    .cf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .cf-card { padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow); }
+    .cf-card h3 { margin: 0 0 .35rem; font-family: var(--display); }
+    .cf-card p { margin: 0; color: var(--muted); line-height: 1.5; font-size: .92rem; }
+    .cf-source { margin-top: 2rem; padding: 1rem 1.1rem; border-left: 4px solid #147cc1; background: rgba(20,124,193,.08); border-radius: 0 10px 10px 0; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body class="course-page">
+  <div class="bg-grid" aria-hidden="true"></div>
+  <main class="course-layout">
+    <section class="cf-hero">
+      <p class="cf-kicker">U.S. Department of Energy · CyberForce Program</p>
+      <h1>CyberForce 101 practice lab</h1>
+      <p>Build working knowledge across the same guide families used in the imported CyberForce 101 Library: competition roles, foundations, networking, systems, defensive tools, cryptography, web security, and automation.</p>
+      <a class="primary course-cta" href="quiz.html">Launch the practice lab →</a>
+    </section>
+    <section class="cf-section" id="sources">
+      <h2>Mission tracks</h2>
+      <p class="muted">The quiz uses the MAT107 engine pattern: smart topic selection, progressive hints, teach-me scaffolding, saved mastery, remixes, and a final readiness check.</p>
+      <div class="cf-grid">
+        <article class="cf-card"><h3>Competition roles</h3><p>CyberForce purpose, anomalies, Green Team, C-Suite communication, and security documentation.</p></article>
+        <article class="cf-card"><h3>Foundations</h3><p>Number bases, hardware, databases, file types, and wind-energy context.</p></article>
+        <article class="cf-card"><h3>Networking & services</h3><p>Devices, addressing, protocols, ports, firewalls, and service inventory.</p></article>
+        <article class="cf-card"><h3>Systems & cloud</h3><p>Linux, Windows, PowerShell, AWS EC2, ICS, SCADA, and Node-RED.</p></article>
+        <article class="cf-card"><h3>Defense & tools</h3><p>Hardening, Nmap, Nessus, Wireshark, discovery, and verification.</p></article>
+        <article class="cf-card"><h3>Cryptography</h3><p>Encryption, hashing, RSA, steganography, and authorized password auditing.</p></article>
+        <article class="cf-card"><h3>Web security</h3><p>Databases, SQL injection, command injection, trust boundaries, and safe defenses.</p></article>
+        <article class="cf-card"><h3>Python & automation</h3><p>Python data types, control flow, PowerShell objects, and Node-RED flows.</p></article>
+      </div>
+      <p class="cf-source">Source text imported from the IT 333r project at <code>src/cyberforce-library-content.js</code>. This practice app is for authorized learning environments and does not replace the original guides.</p>
+    </section>
+  </main>
+  <footer class="site-footer"><p>CyberForce 101 · Practice Lab</p></footer>
+</body>
+</html>

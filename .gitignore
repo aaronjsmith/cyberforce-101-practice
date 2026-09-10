@@ -1,0 +1,9 @@
+node_modules/
+.vite/
+tmp/
+dist/
+.wrangler/
+.wrangler-config/
+.env
+.env.*
+!.env.example
