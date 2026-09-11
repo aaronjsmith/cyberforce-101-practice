@@ -1,4 +1,4 @@
-/* CyberForce 101 question bank built from the imported IT 333r library text. */
+/* CyberForce 101 question bank built from the CyberForce 101 Library text. */
 (function () {
   "use strict";
 

@@ -175,7 +175,7 @@ window.QUIZ_LANG_PACKS.en = {
   hint_overview_automation: "Read the input, transformation, and output as separate steps.",
   scripture_quote: "Protect the mission. Preserve availability. Document the change.",
   scripture_cite: "— CyberForce field note",
-  disclaimer: "Unofficial study practice built from the CyberForce 101 Library text imported in the IT 333r project. Use only in authorized labs and competitions.",
+  disclaimer: "Unofficial study practice built from the CyberForce 101 Library. Use only in authorized labs and competitions.",
   footer_github: "Source notes",
   c_field_source: "Source guide"
 };

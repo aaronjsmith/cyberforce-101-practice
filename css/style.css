@@ -231,6 +231,11 @@ body.course-page .site-footer {
   width: 100%;
 }
 
+.site-footer .cf-disclaimer {
+  margin-top: 0.45rem;
+  font-size: 0.74rem;
+}
+
 .site-footer a {
   color: var(--accent);
   text-underline-offset: 2px;
