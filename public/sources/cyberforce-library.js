@@ -363,6 +363,17 @@ export const cyberforceLibrary = [
     outcomes: ["Describe the purpose of password-auditing tools.", "Compare dictionary and brute-force approaches.", "Connect password policy and storage choices to audit results."]
   },
   {
+    slug: "nist-nice-framework",
+    title: "NIST NICE Framework",
+    category: "Workforce & governance",
+    format: "Workforce framework study guide",
+    pages: 6,
+    file: "NIST NICE Framework study guide",
+    summary: "An original study guide to the NICE Framework's common language for cybersecurity work, including TKS statements, Work Roles, Competency Areas, Work Role Categories, and team application.",
+    focus: "Connect cybersecurity learning and team responsibilities to observable work.",
+    outcomes: ["Explain the purpose of the NICE Framework and SP 800-181 Rev. 1.", "Distinguish Tasks, Knowledge, Skills, Work Roles, and Competency Areas.", "Use current NICE components to plan learning, describe work, and identify capability gaps."]
+  },
+  {
     slug: "python-101",
     title: "Python 101",
     category: "Security concepts",
@@ -380,7 +391,8 @@ export const cyberforceLibraryCategories = [
   "Foundations",
   "Cloud & systems",
   "Defense",
-  "Security concepts"
+  "Security concepts",
+  "Workforce & governance"
 ];
 
 export function getCyberForceGuide(slug) {

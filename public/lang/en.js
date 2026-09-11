@@ -53,7 +53,7 @@ window.QUIZ_LANG_PACKS.en = {
   btn_load: "Load progress",
   btn_reset: "Reset progress",
   btn_notecard: "Quick reference",
-  notecard_disclaimer: "Source-backed study prompts from the CyberForce 101 Library.",
+  notecard_disclaimer: "Source-backed study prompts from the CyberForce 101 Library and NIST NICE Framework study guide.",
   your_answer: "Your answer",
   your_answers: "Your answers",
   notes_label: "Scratch notes",
@@ -173,9 +173,12 @@ window.QUIZ_LANG_PACKS.en = {
   hint_overview_crypto: "Ask whether the goal is confidentiality, integrity, authentication, or hidden communication.",
   hint_overview_web_security: "Trace untrusted input across the application boundary to the interpreter that consumes it.",
   hint_overview_automation: "Read the input, transformation, and output as separate steps.",
+  hint_overview_nice_overview: "Connect the term to the kind of cybersecurity work or capability it describes.",
+  hint_overview_nice_components: "Separate the framework building block from the work grouping or capability area.",
+  hint_overview_nice_application: "Start with the work to be done, then map the capabilities and practice needed.",
   scripture_quote: "Protect the mission. Preserve availability. Document the change.",
   scripture_cite: "— CyberForce field note",
-  disclaimer: "Unofficial study practice built from the CyberForce 101 Library. Use only in authorized labs and competitions.",
+  disclaimer: "Unofficial study practice built from the CyberForce 101 Library and NIST NICE Framework study guide. Use only in authorized labs and competitions.",
   footer_github: "Source notes",
   c_field_source: "Source guide"
 };
