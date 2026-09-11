@@ -487,22 +487,43 @@
     GENERATORS[topic] = expandGeneratorPool(GENERATORS[topic], topic.indexOf("d3fend_") === 0 ? 40 : 20);
   });
 
+  function generatorWeight(topic, index) {
+    var progress = window.QuizProgress;
+    if (progress && typeof progress.questionWeight === "function") {
+      var weight = Number(progress.questionWeight(topic + ":" + index));
+      if (isFinite(weight) && weight >= 0) return weight;
+    }
+    return 1;
+  }
+
+  function chooseGeneratorIndex(topic, list) {
+    var last = lastGeneratorIndexes[topic];
+    var candidates = list.map(function (_, index) { return index; });
+    if (candidates.length > 1 && last != null) {
+      candidates = candidates.filter(function (index) { return index !== last; });
+    }
+
+    var weighted = candidates.map(function (index) {
+      return { index: index, weight: generatorWeight(topic, index) };
+    });
+    var total = weighted.reduce(function (sum, item) { return sum + item.weight; }, 0);
+    if (total <= 0) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    var roll = Math.random() * total;
+    for (var i = 0; i < weighted.length; i += 1) {
+      roll -= weighted[i].weight;
+      if (roll <= 0) return weighted[i].index;
+    }
+    return weighted[weighted.length - 1].index;
+  }
+
   function generateQuestion(topic) {
     var list = topic === "flashcards" ? FLASHCARDS : GENERATORS[topic];
     if (!list || !list.length) list = GENERATORS.foundations;
-    var queueKey = topic === "flashcards" ? "flashcards" : topic;
-    var queue = generatorQueues[queueKey];
-    if (!queue || !queue.length) {
-      queue = shuffle(list.map(function (_, index) { return index; }));
-      if (list.length > 1 && lastGeneratorIndexes[queueKey] === queue[0]) {
-        var first = queue[0];
-        queue[0] = queue[1];
-        queue[1] = first;
-      }
-      generatorQueues[queueKey] = queue;
-    }
-    var generatorIndex = queue.shift();
-    lastGeneratorIndexes[queueKey] = generatorIndex;
+    var generatorIndex = chooseGeneratorIndex(topic, list);
+    lastGeneratorIndexes[topic] = generatorIndex;
     var maker = list[generatorIndex];
     var q = maker();
     q = varyQuestion(q, topic);

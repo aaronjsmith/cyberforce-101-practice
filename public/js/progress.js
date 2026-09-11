@@ -33,6 +33,7 @@
   function emptyStruggleTopic() {
     return {
       wrong: 0,
+      correct: 0,
       hinted: 0,
       recentWrong: 0,
       attempts: 0,
@@ -171,6 +172,7 @@
       genRec = s.byGen[genKey] || {
         topic: topic,
         wrong: 0,
+        correct: 0,
         attempts: 0,
         hinted: 0,
         lastWrongAt: null,
@@ -180,6 +182,7 @@
     }
 
     if (opts.correct) {
+      if (genRec) genRec.correct = (Number(genRec.correct) || 0) + 1;
       if ((Number(opts.hintsUsed) || 0) > 0) {
         st.hinted = (Number(st.hinted) || 0) + 1;
         if (genRec) genRec.hinted = (Number(genRec.hinted) || 0) + 1;
@@ -199,6 +202,60 @@
 
     s.byTopic[topic] = st;
     if (genKey && genRec) s.byGen[genKey] = genRec;
+  }
+
+  /**
+   * Weight a generator according to the learner's answer history.
+   * A missed pattern remains favored until it has two later correct answers.
+   */
+  function questionWeight(genKey) {
+    if (!genKey || String(genKey).indexOf("flashcards:") === 0) return 1;
+    const p = load();
+    const rec = ensureStruggle(p).byGen[String(genKey)];
+    if (!rec) return 1;
+
+    const correct = Number(rec.correct) || 0;
+    const wrong = Number(rec.wrong) || 0;
+    if (correct >= 2) return 0.08;
+    if (wrong > 0) return 3.5 + Math.min(3, wrong) * 0.8;
+    if (correct >= 1) return 0.25;
+    return 1;
+  }
+
+  /**
+   * Reconstruct per-generator history for learners who answered questions
+   * before generator-level tracking was introduced.
+   */
+  function seedGeneratorStruggleIfEmpty(p) {
+    const s = ensureStruggle(p);
+    if (Object.keys(s.byGen).length || !Array.isArray(p.history)) return false;
+    let seeded = false;
+    p.history.forEach(function (entry) {
+      if (!entry || !entry.gen || !entry.topic || !Q.TOPICS[entry.topic]) return;
+      const key = String(entry.gen);
+      const rec = s.byGen[key] || {
+        topic: entry.topic,
+        wrong: 0,
+        correct: 0,
+        attempts: 0,
+        hinted: 0,
+        lastWrongAt: null,
+      };
+      rec.topic = entry.topic;
+      rec.attempts = (Number(rec.attempts) || 0) + 1;
+      if (entry.correct) {
+        rec.correct = (Number(rec.correct) || 0) + 1;
+        if ((Number(entry.hints_used) || 0) > 0) {
+          rec.hinted = (Number(rec.hinted) || 0) + 1;
+        }
+      } else {
+        rec.wrong = (Number(rec.wrong) || 0) + 1;
+        rec.lastWrongAt = entry.at || rec.lastWrongAt;
+      }
+      s.byGen[key] = rec;
+      seeded = true;
+    });
+    return seeded;
   }
 
   /**
@@ -305,8 +362,14 @@
         data.topics[key] = t;
       });
       const hadStruggle = Object.keys(ensureStruggle(data).byTopic).length > 0;
+      const hadGeneratorStruggle = Object.keys(data.struggle.byGen).length > 0;
       seedStruggleIfEmpty(data);
-      if (!hadStruggle && Object.keys(data.struggle.byTopic).length > 0) {
+      const seededGeneratorStruggle =
+        !hadGeneratorStruggle && seedGeneratorStruggleIfEmpty(data);
+      if (
+        (!hadStruggle && Object.keys(data.struggle.byTopic).length > 0) ||
+        seededGeneratorStruggle
+      ) {
         data.updated_at = new Date().toISOString();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       }
@@ -1015,7 +1078,9 @@
   function awardRetryCredit(question) {
     const credit = Q.RETRY_CREDIT != null ? Q.RETRY_CREDIT : 0.05;
     const p = load();
+    recordStruggleEvent(p, question, { correct: true, hintsUsed: 0 });
     const topic = question.topic;
+    const genKey = questionGenKey(question);
     if (!p.topics[topic]) p.topics[topic] = emptyTopic(Q.TOPICS[topic] || topic);
     p.total_credit = (p.total_credit || 0) + credit;
     p.total_correct = (p.total_correct || 0) + 1;
@@ -1030,6 +1095,7 @@
       credit: credit,
       retry: true,
       prompt: String(question.prompt).slice(0, 120),
+      gen: genKey || undefined,
     });
     p.history = p.history.slice(-100);
     save(p);
@@ -1076,6 +1142,12 @@
 
     if (p.boss_drill_topic === topicId) {
       p.boss_drill_topic = null;
+    }
+
+    if (p.struggle && p.struggle.byGen) {
+      Object.keys(p.struggle.byGen).forEach(function (key) {
+        if (key.indexOf(topicId + ":") === 0) delete p.struggle.byGen[key];
+      });
     }
 
     recomputeTotalUnaided(p);
@@ -1208,6 +1280,7 @@
     syncBossDrillTopic: syncBossDrillTopic,
     recordAnswer: recordAnswer,
     recordHintSkip: recordHintSkip,
+    questionWeight: questionWeight,
     awardRetryCredit: awardRetryCredit,
     reset: reset,
     resetTopic: resetTopic,
