@@ -6,15 +6,15 @@
   <title>CyberForce 101 · Practice Lab</title>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    .cf-hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); overflow: hidden; background: var(--panel); color: var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .cf-hero-art { min-height: clamp(22rem, 42vw, 32rem); background: #07533d; }
+    .cf-hero { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); min-height: 31rem; overflow: hidden; background: var(--panel); color: var(--ink); border: 1px solid rgba(255,255,255,.7); border-radius: 22px; box-shadow: 0 24px 60px rgba(26, 35, 50, .13); }
+    .cf-hero-art { min-height: 31rem; background: #07533d; }
     .cf-hero-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
-    .cf-hero-copy { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem, 6vw, 4.5rem); }
+    .cf-hero-copy { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: clamp(2rem, 4.5vw, 4rem) clamp(2rem, 5vw, 4.5rem); }
     .cf-hero-copy > * { max-width: 46rem; }
-    .cf-kicker { margin: 0 0 .7rem; color: #7dc5f5; font: 600 .78rem var(--mono); letter-spacing: .14em; text-transform: uppercase; }
-    .cf-hero h1 { margin: 0 0 1rem; color: var(--ink); font: 700 clamp(2.5rem, 7vw, 5rem)/.95 var(--display); max-width: 12ch; }
-    .cf-hero p { max-width: 55ch; color: var(--muted); line-height: 1.6; }
-    .cf-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .9rem 1rem; margin-top: 1.25rem; }
+    .cf-kicker { margin: 0 0 .9rem; color: var(--accent-deep); font: 600 .72rem var(--mono); letter-spacing: .13em; line-height: 1.5; text-transform: uppercase; }
+    .cf-hero h1 { margin: 0 0 1.15rem; color: var(--ink); font: 700 clamp(3rem, 5.4vw, 4.5rem)/.94 var(--display); letter-spacing: -.045em; max-width: 15ch; overflow-wrap: break-word; }
+    .cf-hero p:not(.cf-kicker) { margin: 0; max-width: 52ch; color: var(--muted); line-height: 1.55; }
+    .cf-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .85rem 1.1rem; margin-top: 1.65rem; }
     .cf-hero .primary { margin-top: 0; background: #147cc1; border-color: #147cc1; }
     .cf-hero-secondary { color: var(--accent-deep); font-weight: 700; text-underline-offset: .18em; }
     .cf-section { margin-top: 2rem; }
@@ -32,7 +32,17 @@
     .cf-resource-links a { margin-top: 0; padding: .65rem .8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); text-decoration: none; }
     .cf-resource-links a:hover { border-color: var(--accent); background: #fff; }
     .cf-source { margin-top: 2rem; padding: 1rem 1.1rem; border-left: 4px solid #147cc1; background: rgba(20,124,193,.08); border-radius: 0 10px 10px 0; color: var(--muted); line-height: 1.5; }
-    @media (max-width: 760px) { .cf-hero { grid-template-columns: 1fr; } .cf-hero-art { min-height: clamp(13rem, 50vw, 20rem); } }
+    @media (max-width: 900px) and (min-width: 761px) {
+      .cf-hero-copy { padding-inline: 2rem; }
+      .cf-hero h1 { font-size: clamp(2.7rem, 5vw, 3.8rem); }
+    }
+    @media (max-width: 760px) {
+      .cf-hero { grid-template-columns: 1fr; min-height: 0; border-radius: 18px; }
+      .cf-hero-art { min-height: 0; aspect-ratio: 1.55; }
+      .cf-hero-copy { padding: 2rem 1.5rem 2.25rem; }
+      .cf-hero h1 { max-width: 12ch; font-size: clamp(2.75rem, 12vw, 4rem); }
+      .cf-hero-actions { align-items: flex-start; flex-direction: column; }
+    }
   </style>
 </head>
 <body class="course-page">
