@@ -861,12 +861,10 @@
       );
     }
 
-    const existing = els.topicList.querySelectorAll(".topic[data-key]");
-    if (existing.length === 0) {
-      Object.entries(p.topics).forEach(([key, info]) => {
+    function addTopicButton(parent, key, info) {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "topic" + (info.teach_learned ? " topic-learned" : "");
+        btn.className = "topic topic-sub" + (info.teach_learned ? " topic-learned" : "");
         btn.dataset.topic = key;
         btn.dataset.key = key;
         btn.innerHTML = topicButtonHtml(info);
@@ -875,7 +873,39 @@
           setModeButtons();
           loadQuestion();
         });
-        els.topicList.appendChild(btn);
+        parent.appendChild(btn);
+    }
+
+    const existing = els.topicList.querySelectorAll(".topic[data-key]");
+    if (existing.length === 0) {
+      const grouped = new Set();
+      const groups = (Q.TOPIC_GROUPS || []).filter((group) =>
+        group.topics.some((key) => p.topics[key])
+      );
+      groups.forEach((group) => {
+        const section = document.createElement("section");
+        section.className = "topic-group";
+        section.setAttribute("aria-labelledby", "topic-group-" + group.id);
+        const heading = document.createElement("h3");
+        heading.className = "topic-group-heading";
+        heading.id = "topic-group-" + group.id;
+        heading.innerHTML =
+          '<span>' + escapeHtml(group.label) + "</span>" +
+          '<em>' + group.topics.filter((key) => p.topics[key]).length + " tracks</em>";
+        section.appendChild(heading);
+        const children = document.createElement("div");
+        children.className = "topic-group-children";
+        group.topics.forEach((key) => {
+          if (p.topics[key]) {
+            grouped.add(key);
+            addTopicButton(children, key, p.topics[key]);
+          }
+        });
+        section.appendChild(children);
+        els.topicList.appendChild(section);
+      });
+      Object.entries(p.topics).forEach(([key, info]) => {
+        if (!grouped.has(key)) addTopicButton(els.topicList, key, info);
       });
     } else {
       existing.forEach((btn) => {

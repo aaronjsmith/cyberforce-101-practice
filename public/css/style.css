@@ -364,6 +364,40 @@ body.course-page .site-footer {
   color: var(--ink);
 }
 
+.topic-group {
+  margin-top: 0.9rem;
+}
+
+.topic-group:first-child {
+  margin-top: 0.2rem;
+}
+
+.topic-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  padding: 0.35rem 0.7rem;
+  border-bottom: 1px solid rgba(15, 110, 86, 0.18);
+  color: var(--accent-deep);
+  font-family: var(--display);
+  font-size: 0.98rem;
+}
+
+.topic-group-heading em {
+  color: var(--muted);
+  font: 600 0.65rem var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topic-group-children {
+  padding-left: 0.35rem;
+  border-left: 2px solid rgba(15, 110, 86, 0.14);
+}
+
 .topic.topic-boss {
   margin-top: 0.65rem;
   border: 1px solid rgba(180, 83, 9, 0.35);

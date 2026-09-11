@@ -12,9 +12,23 @@
     crypto: "Cryptography",
     web_security: "Web security",
     automation: "Python & automation",
-    harvard_cybersecurity: "Harvard Cybersecurity",
-    soc2: "SOC 2 foundations"
+    harvard_overview: "Course overview",
+    harvard_accounts: "Accounts & authentication",
+    harvard_data: "Data & cryptography",
+    harvard_systems: "Systems & networking",
+    harvard_software: "Software security",
+    harvard_privacy: "Privacy",
+    soc2_overview: "Engagement overview",
+    soc2_criteria: "Trust Services Criteria",
+    soc2_scope: "Scope & system description",
+    soc2_controls: "Controls & evidence",
+    soc2_reports: "Reports & assurance"
   };
+  var TOPIC_GROUPS = [
+    { id: "cyberforce", label: "CyberForce 101", topics: ["competition", "foundations", "networking", "systems", "defense", "cyberforce_tools", "crypto", "web_security", "automation"] },
+    { id: "harvard", label: "Harvard Cybersecurity", topics: ["harvard_overview", "harvard_accounts", "harvard_data", "harvard_systems", "harvard_software", "harvard_privacy"] },
+    { id: "soc2", label: "SOC 2 foundations", topics: ["soc2_overview", "soc2_criteria", "soc2_scope", "soc2_controls", "soc2_reports"] }
+  ];
 
   var HINT_CREDIT = { 0: 1, 1: 0.75, 2: 0.5, 3: 0.25 };
   var RETRY_CREDIT = 0.05;
@@ -141,21 +155,39 @@
       makeMc("web_security", "Why can an expression such as 1=1 be dangerous in an unsafe SQL query?", ["It is always true and can change the query's logic", "It encrypts the entire database", "It closes the database connection", "It creates a new operating-system user"], "It is always true and can change the query's logic", "Evaluate the expression literally.", "The guide uses 1=1 to illustrate how injected logic can bypass an intended condition.", "SQL Injection 101.pdf"),
       makeAttack("web_security", "Inspect this simulated inbox message. Which signal most strongly indicates a phishing attempt?", { kind: "email", app: "FieldMail", badge: "SUSPICIOUS", sender: "IT Helpdesk <it-helpdesk@northwind-reset.com>", subject: "Action required: password expires in 30 minutes", body: "Your account will be disabled unless you confirm your password immediately. Use the secure verification page below.", linkLabel: "Verify my account", linkUrl: "https://northwind-reset.com/verify", details: ["Received: just now", "Reply-to: noreply@northwind-reset.com"] }, ["The sender domain does not match the organization and the message creates urgency", "The message contains a subject line", "The message arrived in an inbox", "The link uses blue text"], "The sender domain does not match the organization and the message creates urgency", "Compare the sender, reply-to, destination, and emotional pressure.", "Phishing often combines an unusual origin with urgency to push a user past normal verification.", "Phishing 101.pdf")
     ],
-    harvard_cybersecurity: [
-      makeMc("harvard_cybersecurity", "How is CS50’s Introduction to Cybersecurity organized?", ["Five weeks of material plus a final project", "One exam with no assignments", "Ten labs focused only on programming", "A single lecture about network scanning"], "Five weeks of material plus a final project", "The course home describes a five-week OpenCourseWare path.", "The sequence moves through accounts, data, systems, software, and privacy before the final project.", "CS50 Cybersecurity course home"),
-      makeMc("harvard_cybersecurity", "Which set lists the three common multi-factor authentication categories?", ["Knowledge, possession, and inherence", "Password, port, and protocol", "Hashing, salting, and encryption", "Browser, cookie, and certificate"], "Knowledge, possession, and inherence", "Think about what you know, have, and are.", "CS50 groups MFA factors as knowledge, possession, and inherence.", "CS50 Cybersecurity Week 0"),
-      makeMc("harvard_cybersecurity", "What is the defining property of a cryptographic hash function?", ["It is designed to be one-way", "It can always be decrypted with a public key", "It requires a VPN to run", "It stores the original password in plain text"], "It is designed to be one-way", "A hash is not intended to be reversed into the original input.", "Hashing supports integrity and password storage, but weak passwords can still be guessed.", "CS50 Cybersecurity Week 1"),
-      makeMc("harvard_cybersecurity", "What does TLS add to HTTPS?", ["Protection for data exchanged between a client and server", "A replacement for all user authentication", "A way to make every website public", "A method for deleting browser history"], "Protection for data exchanged between a client and server", "TLS is the security layer associated with HTTPS.", "CS50 connects HTTPS, certificates, certificate authorities, and TLS.", "CS50 Cybersecurity Week 2"),
-      makeMc("harvard_cybersecurity", "Which practice keeps application input separate from SQL instructions?", ["Prepared statements", "Concatenating raw input into a query", "Disabling server-side validation", "Putting the query in a cookie"], "Prepared statements", "The defense preserves the boundary between data and code.", "CS50’s software-security material presents prepared statements as a defense against SQL injection.", "CS50 Cybersecurity Week 3"),
-      makeMc("harvard_cybersecurity", "What privacy technique identifies a browser or device from a combination of attributes?", ["Fingerprinting", "Secure deletion", "Key exchange", "Packet routing"], "Fingerprinting", "The term describes a recognizable collection of browser or device characteristics.", "CS50’s privacy material covers fingerprinting alongside cookies, tracking parameters, and private browsing.", "CS50 Cybersecurity Week 4")
+    harvard_overview: [
+      makeMc("harvard_overview", "How is CS50’s Introduction to Cybersecurity organized?", ["Five weeks of material plus a final project", "One exam with no assignments", "Ten labs focused only on programming", "A single lecture about network scanning"], "Five weeks of material plus a final project", "The course home describes a five-week OpenCourseWare path.", "The sequence moves through accounts, data, systems, software, and privacy before the final project.", "CS50 Cybersecurity course home")
     ],
-    soc2: [
-      makeMc("soc2", "What does a SOC 2 engagement primarily examine?", ["A service organization’s system description and relevant controls", "Only a company’s income statement", "A software license’s source code", "A physical building’s fire exits"], "A service organization’s system description and relevant controls", "SOC 2 is about controls over systems used to provide services.", "The report helps users understand how a service organization’s controls address relevant Trust Services Criteria.", "AICPA SOC 2 reporting"),
-      makeMc("soc2", "Which list contains the five Trust Services Criteria categories?", ["Security, availability, processing integrity, confidentiality, and privacy", "Revenue, payroll, inventory, tax, and treasury", "Authentication, routing, storage, backup, and logging", "Quality, speed, cost, staffing, and marketing"], "Security, availability, processing integrity, confidentiality, and privacy", "The categories describe different dimensions of trustworthy systems and information.", "Organizations select the criteria relevant to the services and commitments being examined.", "AICPA Trust Services Criteria"),
-      makeMc("soc2", "Which Trust Services Criteria category focuses on whether a system is available for operation and use as committed?", ["Availability", "Confidentiality", "Processing integrity", "Privacy"], "Availability", "Match the category to reliable access and operation.", "Availability addresses whether systems and services are available according to commitments or requirements.", "AICPA Trust Services Criteria"),
-      makeMc("soc2", "What is the key difference between a Type 1 and a Type 2 SOC 2 report?", ["Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "Type 1 is for privacy and Type 2 is for security only", "Type 1 is internal and Type 2 is never shared", "Type 1 covers vendors and Type 2 covers employees only"], "Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "One report has an as-of date; the other includes a period of operation.", "The report type changes the evidence window and the assurance users receive about control operation.", "AICPA SOC 2 reporting"),
-      makeMc("soc2", "Why should an organization define the system scope before mapping controls?", ["Scope identifies the services, components, and boundaries the controls must cover", "Scope automatically proves every control is effective", "Scope eliminates the need for evidence", "Scope replaces management’s system description"], "Scope identifies the services, components, and boundaries the controls must cover", "Controls cannot be evaluated against an undefined system.", "A useful scope connects the service, people, processes, technology, data, and relevant third parties.", "AICPA SOC 2 reporting"),
-      makeMc("soc2", "Which evidence practice produces the most defensible control record?", ["Tie evidence to the control, owner, period, system, and any exception", "Collect screenshots without dates or context", "Keep only successful samples", "Store evidence without naming the responsible owner"], "Tie evidence to the control, owner, period, system, and any exception", "A reviewer needs to understand what the evidence proves and when.", "Evidence should support repeatable testing and make gaps or remediation visible rather than hiding them.", "AICPA Trust Services Criteria")
+    harvard_accounts: [
+      makeMc("harvard_accounts", "Which set lists the three common multi-factor authentication categories?", ["Knowledge, possession, and inherence", "Password, port, and protocol", "Hashing, salting, and encryption", "Browser, cookie, and certificate"], "Knowledge, possession, and inherence", "Think about what you know, have, and are.", "CS50 groups MFA factors as knowledge, possession, and inherence.", "CS50 Cybersecurity Week 0")
+    ],
+    harvard_data: [
+      makeMc("harvard_data", "What is the defining property of a cryptographic hash function?", ["It is designed to be one-way", "It can always be decrypted with a public key", "It requires a VPN to run", "It stores the original password in plain text"], "It is designed to be one-way", "A hash is not intended to be reversed into the original input.", "Hashing supports integrity and password storage, but weak passwords can still be guessed.", "CS50 Cybersecurity Week 1")
+    ],
+    harvard_systems: [
+      makeMc("harvard_systems", "What does TLS add to HTTPS?", ["Protection for data exchanged between a client and server", "A replacement for all user authentication", "A way to make every website public", "A method for deleting browser history"], "Protection for data exchanged between a client and server", "TLS is the security layer associated with HTTPS.", "CS50 connects HTTPS, certificates, certificate authorities, and TLS.", "CS50 Cybersecurity Week 2")
+    ],
+    harvard_software: [
+      makeMc("harvard_software", "Which practice keeps application input separate from SQL instructions?", ["Prepared statements", "Concatenating raw input into a query", "Disabling server-side validation", "Putting the query in a cookie"], "Prepared statements", "The defense preserves the boundary between data and code.", "CS50’s software-security material presents prepared statements as a defense against SQL injection.", "CS50 Cybersecurity Week 3")
+    ],
+    harvard_privacy: [
+      makeMc("harvard_privacy", "What privacy technique identifies a browser or device from a combination of attributes?", ["Fingerprinting", "Secure deletion", "Key exchange", "Packet routing"], "Fingerprinting", "The term describes a recognizable collection of browser or device characteristics.", "CS50’s privacy material covers fingerprinting alongside cookies, tracking parameters, and private browsing.", "CS50 Cybersecurity Week 4")
+    ],
+    soc2_overview: [
+      makeMc("soc2_overview", "What does a SOC 2 engagement primarily examine?", ["A service organization’s system description and relevant controls", "Only a company’s income statement", "A software license’s source code", "A physical building’s fire exits"], "A service organization’s system description and relevant controls", "SOC 2 is about controls over systems used to provide services.", "The report helps users understand how a service organization’s controls address relevant Trust Services Criteria.", "AICPA SOC 2 reporting")
+    ],
+    soc2_criteria: [
+      makeMc("soc2_criteria", "Which list contains the five Trust Services Criteria categories?", ["Security, availability, processing integrity, confidentiality, and privacy", "Revenue, payroll, inventory, tax, and treasury", "Authentication, routing, storage, backup, and logging", "Quality, speed, cost, staffing, and marketing"], "Security, availability, processing integrity, confidentiality, and privacy", "The categories describe different dimensions of trustworthy systems and information.", "Organizations select the criteria relevant to the services and commitments being examined.", "AICPA Trust Services Criteria"),
+      makeMc("soc2_criteria", "Which Trust Services Criteria category focuses on whether a system is available for operation and use as committed?", ["Availability", "Confidentiality", "Processing integrity", "Privacy"], "Availability", "Match the category to reliable access and operation.", "Availability addresses whether systems and services are available according to commitments or requirements.", "AICPA Trust Services Criteria")
+    ],
+    soc2_scope: [
+      makeMc("soc2_scope", "Why should an organization define the system scope before mapping controls?", ["Scope identifies the services, components, and boundaries the controls must cover", "Scope automatically proves every control is effective", "Scope eliminates the need for evidence", "Scope replaces management’s system description"], "Scope identifies the services, components, and boundaries the controls must cover", "Controls cannot be evaluated against an undefined system.", "A useful scope connects the service, people, processes, technology, data, and relevant third parties.", "AICPA SOC 2 reporting")
+    ],
+    soc2_controls: [
+      makeMc("soc2_controls", "Which evidence practice produces the most defensible control record?", ["Tie evidence to the control, owner, period, system, and any exception", "Collect screenshots without dates or context", "Keep only successful samples", "Store evidence without naming the responsible owner"], "Tie evidence to the control, owner, period, system, and any exception", "A reviewer needs to understand what the evidence proves and when.", "Evidence should support repeatable testing and make gaps or remediation visible rather than hiding them.", "AICPA Trust Services Criteria")
+    ],
+    soc2_reports: [
+      makeMc("soc2_reports", "What is the key difference between a Type 1 and a Type 2 SOC 2 report?", ["Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "Type 1 is for privacy and Type 2 is for security only", "Type 1 is internal and Type 2 is never shared", "Type 1 covers vendors and Type 2 covers employees only"], "Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "One report has an as-of date; the other includes a period of operation.", "The report type changes the evidence window and the assurance users receive about control operation.", "AICPA SOC 2 reporting")
     ],
     automation: [
       makeMc("automation", "Which Python type is an ordered, mutable collection?", ["List", "Tuple", "Boolean", "Integer"], "List", "A list can be changed after it is created.", "Use the Python primer's data-type vocabulary before choosing a control-flow tool.", "Python 101.pdf"),
@@ -171,6 +203,49 @@
     makeShort("flashcards", "What tool is introduced for packet capture analysis?", ["Wireshark"], "Think of the packet-analysis guide.", "The tool uses captures and display filters.", "Wireshark 101.pdf"),
     makeShort("flashcards", "What is the Linux command for showing the current working directory?", ["pwd"], "It prints the path you are currently in.", "The Linux cheat sheet groups it with cd and ls.", "Linux Cheat Sheet.pdf")
   ];
+
+  var REVIEW_FRAMES = [
+    "For a quick check:",
+    "In a study session:",
+    "During a tabletop review:",
+    "When coaching a teammate:",
+    "As an analyst writing a note:",
+    "When preparing for a review:",
+    "In a blue-team briefing:",
+    "Before making a change:",
+    "While validating an answer:",
+    "From an operator's perspective:",
+    "For a control walkthrough:",
+    "When reviewing evidence:",
+    "In a post-incident debrief:",
+    "As a system owner:",
+    "When explaining the concept to a peer:",
+    "For a readiness check:",
+    "In a practical lab:",
+    "When deciding what to do next:",
+    "From a risk-review perspective:",
+    "As a final knowledge check:"
+  ];
+
+  function expandGeneratorPool(list, minimum) {
+    var expanded = list.slice();
+    var variant = 0;
+    while (expanded.length < minimum && list.length) {
+      (function (base, frame) {
+        expanded.push(function () {
+          var question = base();
+          question.prompt = frame + String.fromCharCode(10, 10) + question.prompt;
+          return question;
+        });
+      })(list[variant % list.length], REVIEW_FRAMES[variant % REVIEW_FRAMES.length]);
+      variant += 1;
+    }
+    return expanded;
+  }
+
+  Object.keys(GENERATORS).forEach(function (topic) {
+    GENERATORS[topic] = expandGeneratorPool(GENERATORS[topic], 20);
+  });
 
   function generateQuestion(topic) {
     var list = topic === "flashcards" ? FLASHCARDS : GENERATORS[topic];
@@ -239,6 +314,7 @@
 
   window.QuizQuestions = {
     get TOPICS() { return TOPICS; },
+    get TOPIC_GROUPS() { return TOPIC_GROUPS; },
     HINT_CREDIT: HINT_CREDIT,
     RETRY_CREDIT: RETRY_CREDIT,
     UNAIDED_TO_MASTER: MASTER,
