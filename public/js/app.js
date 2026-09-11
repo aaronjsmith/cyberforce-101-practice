@@ -161,6 +161,7 @@
     sharedScoreBanner: document.getElementById("shared-score-banner"),
     sharedScoreMeta: document.getElementById("shared-score-meta"),
     sharedScoreCompetition: document.getElementById("shared-score-competition-observation"),
+    sharedScoreGeneral: document.getElementById("shared-score-general-observation"),
     sharedScoreFocus: document.getElementById("shared-score-focus-observation"),
     mastery: null,
     masteryPie: document.getElementById("mastery-pie"),
@@ -907,13 +908,42 @@
         termMastery +
         "% average mastery of core competition terms. Focus on recognizing and applying the vocabulary before timed competition work.";
     }
+    const overallMastery = Math.max(0, Math.min(100, Math.round(Number(score.overall_mastery) || 0)));
+    const masteredTracks = Math.max(0, Number(score.mastered_topics) || 0);
+    let general;
+    if (!score.total_attempted) {
+      general = "There is not enough answered-question evidence to assess general cybersecurity knowledge yet.";
+    } else if (overallMastery >= 80) {
+      general =
+        "Strong general cybersecurity knowledge: the student shows consistent coverage across " +
+        rows.length +
+        " tracks, with " +
+        overallMastery +
+        "% overall mastery and " +
+        masteredTracks +
+        " tracks mastered.";
+    } else if (overallMastery >= 60) {
+      general =
+        "Developing general cybersecurity knowledge: the student has working coverage across " +
+        rows.length +
+        " tracks at " +
+        overallMastery +
+        "% overall mastery. Continued practice should connect individual terms into broader security concepts.";
+    } else {
+      general =
+        "Foundational general cybersecurity knowledge: the student is building coverage across " +
+        rows.length +
+        " tracks at " +
+        overallMastery +
+        "% overall mastery. Reinforce concepts across several domains to build breadth and recall.";
+    }
     const weakest = rows.slice().sort((a, b) => a.mastery - b.mastery).slice(0, 3);
     const focus = weakest.length
       ? "Recommended focus: reinforce " +
         weakest.map((row) => row.label).join(", ") +
         "—these are the lowest-mastery tracks in this snapshot."
       : "No track-level mastery data is available for a focus recommendation.";
-    return { competition: competition, focus: focus };
+    return { competition: competition, general: general, focus: focus };
   }
   function updateSharedScoreBanner() {
     if (!els.sharedScoreBanner) return;
@@ -936,6 +966,7 @@
       });
       const observations = getSharedScoreObservations(state.sharedScore);
       if (els.sharedScoreCompetition) els.sharedScoreCompetition.textContent = observations.competition;
+      if (els.sharedScoreGeneral) els.sharedScoreGeneral.textContent = observations.general;
       if (els.sharedScoreFocus) els.sharedScoreFocus.textContent = observations.focus;
     }
   }

@@ -56,6 +56,7 @@ window.QUIZ_LANG_PACKS.en = {
   shared_score_title: "CyberForce 101 · Student report card",
   shared_score_observations: "Observations",
   shared_score_competition_title: "Competition Readiness",
+  shared_score_general_title: "General Cybersecurity Knowledge",
   shared_score_focus_title: "Suggested focus",
   shared_score_meta: "Grade {grade} · {answered} answered · {streak} current streak · {mastered}/{total} tracks mastered · created {created}",
   shared_score_practice: "Open practice quiz",
