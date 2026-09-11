@@ -54,37 +54,36 @@
   var generatorQueues = {};
   var lastGeneratorIndexes = {};
   var variationCounters = {};
-  var VARIATION_CONTEXTS = {
+  var PRACTICE_FRAMES = {
     cyberforce: [
-      "A competition team is reviewing a fresh anomaly with {count} evidence items.",
-      "A blue-team analyst is preparing a response from {count} collected observations.",
-      "A practice lab has recorded {count} relevant details for this case.",
-      "A teammate has handed over {count} findings for a quick technical review.",
-      "The operations log contains {count} entries connected to this exercise."
+      "During a CyberForce blue-team review:",
+      "While securing a cyber-physical lab:",
+      "As an analyst documents the defensive decision:",
+      "During an authorized practice exercise:",
+      "When handing the finding to the next analyst:"
     ],
     harvard: [
-      "A course study group is reviewing {count} observations from a new lab scenario.",
-      "A learner is checking {count} pieces of evidence before choosing an answer.",
-      "A security review worksheet contains {count} items for this course case.",
-      "A classmate has documented {count} details from the current cybersecurity exercise.",
-      "A practice review includes {count} facts that must be interpreted carefully."
+      "In a cybersecurity course review:",
+      "While studying the security concept:",
+      "As a learner explains the idea to a classmate:",
+      "During a practical course exercise:",
+      "When checking the concept against the course material:"
     ],
     soc2: [
-      "A service organization has prepared {count} evidence items for this control review.",
-      "An audit walkthrough is tracking {count} artifacts for the current engagement.",
-      "A control owner is explaining {count} pieces of evidence to the review team.",
-      "The system description connects this question to {count} documented observations.",
-      "A readiness check includes {count} records that need a defensible interpretation."
+      "During a SOC 2 assurance review:",
+      "While preparing evidence for an assessor:",
+      "When explaining assurance to a service customer:",
+      "As a control owner reviews the audit record:",
+      "During a service-auditor engagement:"
     ],
     d3fend: [
-      "A blue-team review is mapping {count} observations to a D3FEND countermeasure.",
-      "A defender is choosing a response from {count} pieces of system evidence.",
-      "A cyber-physical operator has {count} facts to classify before changing a control.",
-      "A security engineer is documenting {count} defensive actions for a handoff.",
-      "A tabletop exercise contains {count} signals that need a D3FEND-shaped answer."
+      "During a defensive engineering review:",
+      "As a blue team maps the countermeasure:",
+      "While validating defensive coverage:",
+      "During an authorized security exercise:",
+      "As an operator documents the response:"
     ]
   };
-
   function id() { seq += 1; return "cf-" + seq; }
   function shuffle(items) {
     var out = items.slice();
@@ -103,17 +102,7 @@
     if (topic.indexOf("d3fend_") === 0) return "d3fend";
     return "cyberforce";
   }
-  function varyQuestion(question, topic) {
-    var index = variationCounters[topic] || 0;
-    variationCounters[topic] = index + 1;
-    var family = variationFamily(topic);
-    var templates = VARIATION_CONTEXTS[family];
-    var template = templates[index % templates.length];
-    var count = 3 + ((index * 7 + topic.length) % 18);
-    var caseId = family.toUpperCase().slice(0, 2) + "-" + String(100 + ((index * 53 + topic.length * 11) % 900));
-    var context = template.replace("{count}", String(count)) + " Practice case " + caseId + ".";
-    question.prompt = context + String.fromCharCode(10, 10) + question.prompt;
-    if (question.setup) question.setup = "Case detail: " + count + " evidence items are in scope for this exercise.\n\n" + question.setup;
+  function varyQuestion(question) {
     return question;
   }
   var SOURCE_URLS = {
@@ -292,7 +281,7 @@
       makeMc("soc2_controls", "Which evidence practice produces the most defensible control record?", ["Tie evidence to the control, owner, period, system, and any exception", "Collect screenshots without dates or context", "Keep only successful samples", "Store evidence without naming the responsible owner"], "Tie evidence to the control, owner, period, system, and any exception", "A reviewer needs to understand what the evidence proves and when.", "Evidence should support repeatable testing and make gaps or remediation visible rather than hiding them.", "AICPA Trust Services Criteria")
     ],
     soc2_reports: [
-      makeMc("soc2_reports", "What is the key difference between a Type 1 and a Type 2 SOC 2 report?", ["Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "Type 1 is for privacy and Type 2 is for security only", "Type 1 is internal and Type 2 is never shared", "Type 1 covers vendors and Type 2 covers employees only"], "Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "One report has an as-of date; the other includes a period of operation.", "The report type changes the evidence window and the assurance users receive about control operation.", "AICPA SOC 2 reporting")
+      makeMc("soc2_reports", "A customer is comparing a SOC 2 Type 1 report dated June 30 with a Type 2 report covering July through December. What is the key difference between them?", ["Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "Type 1 is for privacy and Type 2 is for security only", "Type 1 is internal and Type 2 is never shared", "Type 1 covers vendors and Type 2 covers employees only"], "Type 1 evaluates controls at a point in time; Type 2 also evaluates operating effectiveness over a period", "One report has an as-of date; the other includes a period of operation.", "The report type changes the evidence window and the assurance users receive about control operation.", "AICPA SOC 2 reporting")
     ],
     nice_overview: [
       makeMc("nice_overview", "What is the primary purpose of the NIST NICE Framework?", ["Provide a common language for describing cybersecurity work and capabilities", "Assign one universal job title to every security professional", "Replace technical training with a single certification exam", "Define firewall rules for every organization"], "Provide a common language for describing cybersecurity work and capabilities", "Think workforce language, not a technical control.", "NICE helps employers, learners, educators, and training providers communicate about cybersecurity work, hiring, and development.", "NIST NICE Framework overview"),
@@ -444,32 +433,10 @@
     makeShort("flashcards", "What is the Linux command for showing the current working directory?", ["pwd"], "It prints the path you are currently in.", "The Linux cheat sheet groups it with cd and ls.", "Linux Cheat Sheet.pdf")
   ];
 
-  var REVIEW_FRAMES = [
-    "For a quick check:",
-    "In a study session:",
-    "During a tabletop review:",
-    "When coaching a teammate:",
-    "As an analyst writing a note:",
-    "When preparing for a review:",
-    "In a blue-team briefing:",
-    "Before making a change:",
-    "While validating an answer:",
-    "From an operator's perspective:",
-    "For a control walkthrough:",
-    "When reviewing evidence:",
-    "In a post-incident debrief:",
-    "As a system owner:",
-    "When explaining the concept to a peer:",
-    "For a readiness check:",
-    "In a practical lab:",
-    "When deciding what to do next:",
-    "From a risk-review perspective:",
-    "As a final knowledge check:"
-  ];
-
-  function expandGeneratorPool(list, minimum) {
+  function expandGeneratorPool(list, minimum, topic) {
     var expanded = list.slice();
     var variant = 0;
+    var frames = PRACTICE_FRAMES[variationFamily(topic)] || PRACTICE_FRAMES.cyberforce;
     while (expanded.length < minimum && list.length) {
       (function (base, frame) {
         expanded.push(function () {
@@ -477,14 +444,13 @@
           question.prompt = frame + String.fromCharCode(10, 10) + question.prompt;
           return question;
         });
-      })(list[variant % list.length], REVIEW_FRAMES[variant % REVIEW_FRAMES.length]);
+      })(list[variant % list.length], frames[variant % frames.length]);
       variant += 1;
     }
     return expanded;
   }
-
   Object.keys(GENERATORS).forEach(function (topic) {
-    GENERATORS[topic] = expandGeneratorPool(GENERATORS[topic], topic.indexOf("d3fend_") === 0 ? 40 : 20);
+    GENERATORS[topic] = expandGeneratorPool(GENERATORS[topic], topic.indexOf("d3fend_") === 0 ? 40 : 20, topic);
   });
 
   function generatorWeight(topic, index) {
