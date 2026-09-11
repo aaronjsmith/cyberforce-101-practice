@@ -36,6 +36,30 @@
   var seq = 0;
   var generatorQueues = {};
   var lastGeneratorIndexes = {};
+  var variationCounters = {};
+  var VARIATION_CONTEXTS = {
+    cyberforce: [
+      "A competition team is reviewing a fresh anomaly with {count} evidence items.",
+      "A blue-team analyst is preparing a response from {count} collected observations.",
+      "A practice lab has recorded {count} relevant details for this case.",
+      "A teammate has handed over {count} findings for a quick technical review.",
+      "The operations log contains {count} entries connected to this exercise."
+    ],
+    harvard: [
+      "A course study group is reviewing {count} observations from a new lab scenario.",
+      "A learner is checking {count} pieces of evidence before choosing an answer.",
+      "A security review worksheet contains {count} items for this course case.",
+      "A classmate has documented {count} details from the current cybersecurity exercise.",
+      "A practice review includes {count} facts that must be interpreted carefully."
+    ],
+    soc2: [
+      "A service organization has prepared {count} evidence items for this control review.",
+      "An audit walkthrough is tracking {count} artifacts for the current engagement.",
+      "A control owner is explaining {count} pieces of evidence to the review team.",
+      "The system description connects this question to {count} documented observations.",
+      "A readiness check includes {count} records that need a defensible interpretation."
+    ]
+  };
 
   function id() { seq += 1; return "cf-" + seq; }
   function shuffle(items) {
@@ -48,6 +72,25 @@
   }
   function pick(items) { return items[Math.floor(Math.random() * items.length)]; }
   function num(value) { return Math.round(Number(value) * 10000) / 10000; }
+  function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function variationFamily(topic) {
+    if (topic.indexOf("harvard_") === 0) return "harvard";
+    if (topic.indexOf("soc2_") === 0) return "soc2";
+    return "cyberforce";
+  }
+  function varyQuestion(question, topic) {
+    var index = variationCounters[topic] || 0;
+    variationCounters[topic] = index + 1;
+    var family = variationFamily(topic);
+    var templates = VARIATION_CONTEXTS[family];
+    var template = templates[index % templates.length];
+    var count = 3 + ((index * 7 + topic.length) % 18);
+    var caseId = family.toUpperCase().slice(0, 2) + "-" + String(100 + ((index * 53 + topic.length * 11) % 900));
+    var context = template.replace("{count}", String(count)) + " Practice case " + caseId + ".";
+    question.prompt = context + String.fromCharCode(10, 10) + question.prompt;
+    if (question.setup) question.setup = "Case detail: " + count + " evidence items are in scope for this exercise.\n\n" + question.setup;
+    return question;
+  }
   var SOURCE_URLS = {
     "2025 CyberForce Competition Expectations.pdf": "https://cyberforce.energy.gov/wp-content/uploads/2026/01/2025-CyberForce-Competition-Expectations.pdf",
     "CS50 Cybersecurity course home": "https://cs50.harvard.edu/cybersecurity/",
@@ -67,6 +110,36 @@
   function makeNum(topic, prompt, answer, hint, setup, source, tolerance) {
     return function () {
       return { id: id(), topic: topic, type: "numeric", prompt: prompt, answer: num(answer), tolerance: tolerance == null ? 0.01 : tolerance, hint: hint, setup: setup, calc: { ti: "Enter the arithmetic in your calculator." }, source: source };
+    };
+  }
+  function makeBinaryConversion(topic, source) {
+    var remainingDecimals = [];
+    return function () {
+      if (!remainingDecimals.length) {
+        for (var value = 5; value <= 31; value += 1) remainingDecimals.push(value);
+        remainingDecimals = shuffle(remainingDecimals);
+      }
+      var decimal = remainingDecimals.pop();
+      var binary = decimal.toString(2);
+      var placeValues = [];
+      for (var index = binary.length - 1; index >= 0; index -= 1) {
+        placeValues.push(String(Math.pow(2, index)));
+      }
+      return {
+        id: id(),
+        topic: topic,
+        type: "numeric",
+        prompt: "Convert binary " + binary + " to decimal.",
+        answer: decimal,
+        tolerance: 0,
+        hint: "Use the place values " + placeValues.join(", ") + ".",
+        setup: binary.split("").map(function (bit, position) {
+          var exponent = binary.length - position - 1;
+          return bit + "×" + Math.pow(2, exponent);
+        }).join(" + ") + " = ?",
+        calc: { ti: "Enter the binary place-value arithmetic in your calculator." },
+        source: source
+      };
     };
   }
   function makeShort(topic, prompt, answers, hint, setup, source) {
@@ -97,7 +170,7 @@
     ],
     foundations: [
       makeMc("foundations", "Hexadecimal numbers use which base?", ["2", "8", "10", "16"], "16", "Hex uses sixteen symbols: 0–9 and A–F.", "Base 16 is useful for compactly representing binary data.", "Base Tutorial.pdf"),
-      makeNum("foundations", "Convert binary 1010 to decimal.", 10, "Use place values 8, 4, 2, and 1.", "1010 = 1×8 + 0×4 + 1×2 + 0×1.", "Base Tutorial.pdf", 0),
+      makeBinaryConversion("foundations", "Base Tutorial.pdf"),
       makeMc("foundations", "Which statement correctly describes lossless compression?", ["The original data can be reconstructed exactly", "Some detail is intentionally discarded", "It only works on network packets", "It changes every file into plain text"], "The original data can be reconstructed exactly", "Think about whether decompression can restore every bit.", "Lossless methods preserve the original content; lossy methods trade fidelity for smaller size.", "File Types 101.pdf"),
       makeMc("foundations", "A wind turbine primarily converts the kinetic energy of moving air into what?", ["Electrical energy", "Database records", "Compressed video", "Cryptographic keys"], "Electrical energy", "Follow the energy conversion described in the industry primer.", "The physical process is the context behind the cyber-physical scenario.", "Intro to Wind.pdf")
     ],
@@ -265,6 +338,7 @@
     lastGeneratorIndexes[queueKey] = generatorIndex;
     var maker = list[generatorIndex];
     var q = maker();
+    q = varyQuestion(q, topic);
     q._gen = maker;
     q._genKey = topic + ":" + generatorIndex;
     return q;
