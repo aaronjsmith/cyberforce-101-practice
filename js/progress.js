@@ -17,6 +17,7 @@
    * Answer and calculator steps are never part of the auto scaffold.
    */
   const TEACH_MAX = 5;
+  let excludedTopics = {};
 
   function emptyTopic(label) {
     return {
@@ -80,6 +81,23 @@
       p.struggle.byGen = {};
     }
     return p.struggle;
+  }
+
+  function setExcludedTopics(topics) {
+    excludedTopics = {};
+    (Array.isArray(topics) ? topics : []).forEach(function (topic) {
+      if (Q.TOPICS[topic]) excludedTopics[topic] = true;
+    });
+  }
+
+  function availableTopicKeys() {
+    return Object.keys(Q.TOPICS).filter(function (topic) {
+      return !excludedTopics[topic];
+    });
+  }
+
+  function isTopicAvailable(topic) {
+    return Boolean(topic && Q.TOPICS[topic] && !excludedTopics[topic]);
   }
 
   /** Stable-ish key for a question pattern (generator name when available). */
@@ -743,7 +761,7 @@
   }
 
   function shuffleTopics() {
-    const keys = Object.keys(Q.TOPICS).slice();
+    const keys = availableTopicKeys();
     for (let i = keys.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const tmp = keys[i];
@@ -756,7 +774,7 @@
   function pickSmartTopic(avoidTopic) {
     const p = load();
     seedStruggleIfEmpty(p);
-    const keys = Object.keys(Q.TOPICS);
+    const keys = availableTopicKeys();
     if (!keys.length) return null;
     const weights = keys.map((t) => {
       const info = p.topics[t] || { unaided_correct: 0, attempted: 0 };
@@ -786,9 +804,7 @@
   function pickNourishTopic(weekId, avoidTopic) {
     const p = load();
     seedStruggleIfEmpty(p);
-    const keys = Object.keys(Q.TOPICS).filter(function (k) {
-      return k !== "flashcards";
-    });
+    const keys = availableTopicKeys();
     if (!keys.length) return null;
 
     const course = window.Mat107Course;
@@ -831,7 +847,7 @@
 
   function pickAllTopic(avoidTopic) {
     const p = load();
-    const keys = Object.keys(Q.TOPICS);
+    const keys = availableTopicKeys();
     if (!keys.length) return null;
     const weighted = [];
     keys.forEach(function (k) {
@@ -844,9 +860,7 @@
   }
 
   function teachableTopicKeys() {
-    return Object.keys(Q.TOPICS).filter(function (k) {
-      return k !== "flashcards";
-    });
+    return availableTopicKeys();
   }
 
   /**
@@ -1281,6 +1295,8 @@
     recordAnswer: recordAnswer,
     recordHintSkip: recordHintSkip,
     questionWeight: questionWeight,
+    setExcludedTopics: setExcludedTopics,
+    isTopicAvailable: isTopicAvailable,
     awardRetryCredit: awardRetryCredit,
     reset: reset,
     resetTopic: resetTopic,

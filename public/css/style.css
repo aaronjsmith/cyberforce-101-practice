@@ -373,19 +373,49 @@ body.course-page .site-footer {
 }
 
 .topic-group-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
   margin: 0 0 0.25rem;
-  padding: 0.35rem 0.7rem;
+  padding: 0;
   border-bottom: 1px solid rgba(15, 110, 86, 0.18);
-  color: var(--accent-deep);
-  font-family: var(--display);
-  font-size: 0.98rem;
 }
 
-.topic-group-heading em {
+.topic-group-toggle {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font: 0.98rem var(--display);
+  text-align: left;
+  cursor: pointer;
+}
+
+.topic-group-toggle:hover {
+  background: rgba(15, 110, 86, 0.07);
+}
+
+.topic-group-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.topic-group-chevron {
+  display: inline-block;
+  width: 0.8rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  transition: transform 160ms ease;
+}
+
+.topic-group.is-collapsed .topic-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.topic-group-toggle em {
+  margin-left: auto;
   color: var(--muted);
   font: 600 0.65rem var(--mono);
   letter-spacing: 0.04em;

@@ -101,6 +101,7 @@
     bossContinueAfterMiss: false,
     /** Course week focus for Nourish and Strengthen (weeks12 | weeks34 | weeks57). */
     nourishWeekId: null,
+    collapsedTopicGroups: {},
     boss: {
       active: false,
       queue: [],
@@ -885,16 +886,35 @@
       groups.forEach((group) => {
         const section = document.createElement("section");
         section.className = "topic-group";
+        section.dataset.group = group.id;
         section.setAttribute("aria-labelledby", "topic-group-" + group.id);
         const heading = document.createElement("h3");
         heading.className = "topic-group-heading";
         heading.id = "topic-group-" + group.id;
-        heading.innerHTML =
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "topic-group-toggle";
+        toggle.setAttribute(
+          "aria-controls",
+          "topic-group-children-" + group.id
+        );
+        const collapsed = Boolean(state.collapsedTopicGroups[group.id]);
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        toggle.title = collapsed ? "Expand track section" : "Collapse track section";
+        toggle.innerHTML =
+          '<span class="topic-group-chevron" aria-hidden="true">▾</span>' +
           '<span>' + escapeHtml(group.label) + "</span>" +
           '<em>' + group.topics.filter((key) => p.topics[key]).length + " tracks</em>";
+        toggle.addEventListener("click", () =>
+          setTopicGroupCollapsed(group.id, !state.collapsedTopicGroups[group.id])
+        );
+        heading.appendChild(toggle);
         section.appendChild(heading);
         const children = document.createElement("div");
         children.className = "topic-group-children";
+        children.id = "topic-group-children-" + group.id;
+        children.hidden = collapsed;
+        section.classList.toggle("is-collapsed", collapsed);
         group.topics.forEach((key) => {
           if (p.topics[key]) {
             grouped.add(key);
@@ -908,6 +928,20 @@
         if (!grouped.has(key)) addTopicButton(els.topicList, key, info);
       });
     } else {
+      els.topicList.querySelectorAll(".topic-group").forEach((section) => {
+        const groupId = section.dataset.group;
+        const collapsed = Boolean(state.collapsedTopicGroups[groupId]);
+        section.classList.toggle("is-collapsed", collapsed);
+        const toggle = section.querySelector(".topic-group-toggle");
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", String(!collapsed));
+          toggle.title = collapsed
+            ? "Expand track section"
+            : "Collapse track section";
+        }
+        const children = section.querySelector(".topic-group-children");
+        if (children) children.hidden = collapsed;
+      });
       existing.forEach((btn) => {
         const info = p.topics[btn.dataset.key];
         if (info) {
@@ -921,6 +955,64 @@
     setModeButtons();
     updateFinalBossButton(p);
   }
+
+  const TOPIC_GROUP_COLLAPSE_KEY =
+    "mat107-" + (P.ASSESSMENT_ID || "assessment1") + "-collapsed-groups";
+
+  function readCollapsedTopicGroups() {
+    try {
+      const raw = localStorage.getItem(TOPIC_GROUP_COLLAPSE_KEY);
+      const ids = raw ? JSON.parse(raw) : [];
+      const known = new Set((Q.TOPIC_GROUPS || []).map((group) => group.id));
+      return Array.isArray(ids)
+        ? ids.reduce((out, id) => {
+            if (known.has(id)) out[id] = true;
+            return out;
+          }, {})
+        : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function syncTopicGroupAvailability() {
+    const excluded = [];
+    (Q.TOPIC_GROUPS || []).forEach((group) => {
+      if (state.collapsedTopicGroups[group.id]) {
+        group.topics.forEach((topic) => excluded.push(topic));
+      }
+    });
+    if (P.setExcludedTopics) P.setExcludedTopics(excluded);
+  }
+
+  function groupForTopic(topic) {
+    return (Q.TOPIC_GROUPS || []).find((group) =>
+      group.topics.indexOf(topic) !== -1
+    );
+  }
+
+  function setTopicGroupCollapsed(groupId, collapsed) {
+    if (collapsed) state.collapsedTopicGroups[groupId] = true;
+    else delete state.collapsedTopicGroups[groupId];
+    try {
+      localStorage.setItem(
+        TOPIC_GROUP_COLLAPSE_KEY,
+        JSON.stringify(Object.keys(state.collapsedTopicGroups))
+      );
+    } catch (e) {}
+    syncTopicGroupAvailability();
+    refreshProgress();
+
+    const activeGroup = groupForTopic(state.mode);
+    if (collapsed && activeGroup && activeGroup.id === groupId) {
+      state.mode = "smart";
+      setModeButtons();
+      loadQuestion();
+    }
+  }
+
+  state.collapsedTopicGroups = readCollapsedTopicGroups();
+  syncTopicGroupAvailability();
 
   const BOSS_INVITE_KEY = "mat107-boss-invite-dismissed";
   const NOURISH_WEEK_KEY = "mat107-nourish-week";
@@ -1960,9 +2052,14 @@
       state.mode !== "finalboss" && P.syncBossDrillTopic
         ? P.syncBossDrillTopic()
         : null;
-    if (drillTopic) {
-      topic = drillTopic;
-      state.mode = drillTopic;
+    const availableDrillTopic =
+      drillTopic &&
+      (!P.isTopicAvailable || P.isTopicAvailable(drillTopic))
+        ? drillTopic
+        : null;
+    if (availableDrillTopic) {
+      topic = availableDrillTopic;
+      state.mode = availableDrillTopic;
       setModeButtons();
     } else if (state.mode === "finalboss") {
       if (!state.boss.active || state.boss.status === "failed" || state.boss.status === "won") {
@@ -2028,6 +2125,11 @@
       topic = "flashcards";
     } else {
       topic = state.mode;
+      if (P.isTopicAvailable && !P.isTopicAvailable(topic)) {
+        state.mode = "smart";
+        setModeButtons();
+        topic = P.pickSmartTopic(state.lastTopic);
+      }
     }
 
     if (!topic) {
