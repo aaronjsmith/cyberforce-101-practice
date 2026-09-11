@@ -56,32 +56,39 @@
   var variationCounters = {};
   var PRACTICE_FRAMES = {
     cyberforce: [
-      "During a CyberForce blue-team review:",
-      "While securing a cyber-physical lab:",
-      "As an analyst documents the defensive decision:",
-      "During an authorized practice exercise:",
-      "When handing the finding to the next analyst:"
+      "Moroni Systems has raised a neon Title of Liberty and wants the strongest defense:",
+      "The Cyber G4d14nt0n R0bb3rs are stealing tokens again; the blue team needs to:",
+      "Nephi Technologies says the breach path is like a broken bow: trace the failure before choosing a fix:",
+      "Ammon Cloud's cybernetic sheepdog found an unauthorized login:",
+      "Mormon Data's archive drone has one question for the incident record:"
     ],
     harvard: [
-      "In a cybersecurity course review:",
-      "While studying the security concept:",
-      "As a learner explains the idea to a classmate:",
-      "During a practical course exercise:",
-      "When checking the concept against the course material:"
+      "Alma Labs is debugging a seminary-grade security lab:",
+      "Nephi Technologies brought a laser-etched bow to office hours:",
+      "A Cyber G4d14nt0n R0bb3r failed the quiz and blamed the firewall:",
+      "Moroni Systems' neon study group is comparing the definitions:",
+      "Ammon Cloud's cybernetic sheepdog is guarding the lab:"
     ],
     soc2: [
-      "During a SOC 2 assurance review:",
-      "While preparing evidence for an assessor:",
-      "When explaining assurance to a service customer:",
-      "As a control owner reviews the audit record:",
-      "During a service-auditor engagement:"
+      "Moroni Systems is auditing G4d14nt0n Cl0ud's service:",
+      "A neon customer asks whether G4d14nt0n Cl0ud's controls actually worked over time:",
+      "Moroni Systems' audit drone requests dated evidence:",
+      "G4d14nt0n L4bs claims its controls are 'totally fine'; the assessor asks:",
+      "Ammon Cloud's cybernetic sheepdog is reviewing the service boundary:"
+    ],
+    nice: [
+      "Moroni Systems is assigning cyberpunk work roles:",
+      "G4d14nt0n S0luti0ns has job titles; NICE asks what work they actually do:",
+      "Nephi Technologies is building a skill matrix instead of carving it into plates:",
+      "Ammon Cloud's cybernetic sheepdog is mapping team capabilities:",
+      "Moroni Systems' neon career fair needs a common language:"
     ],
     d3fend: [
-      "During a defensive engineering review:",
-      "As a blue team maps the countermeasure:",
-      "While validating defensive coverage:",
-      "During an authorized security exercise:",
-      "As an operator documents the response:"
+      "G4d14nt0n N3tw0rks is probing the neon perimeter; the defender should:",
+      "Nephi Technologies' laser bow detected an unexpected process:",
+      "Moroni Systems is raising a zero-trust Title of Liberty:",
+      "Ammon Cloud's cybernetic sheepdog found a suspicious credential:",
+      "Mormon Data's archive drone is validating the recovery plan:"
     ]
   };
   function id() { seq += 1; return "cf-" + seq; }
@@ -99,6 +106,7 @@
   function variationFamily(topic) {
     if (topic.indexOf("harvard_") === 0) return "harvard";
     if (topic.indexOf("soc2_") === 0) return "soc2";
+    if (topic.indexOf("nice_") === 0) return "nice";
     if (topic.indexOf("d3fend_") === 0) return "d3fend";
     return "cyberforce";
   }
