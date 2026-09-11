@@ -32,21 +32,23 @@
   }
   function pick(items) { return items[Math.floor(Math.random() * items.length)]; }
   function num(value) { return Math.round(Number(value) * 10000) / 10000; }
-  function sourceLabel(file) { return "Source: " + file; }
+  var SOURCE_URLS = {
+    "2025 CyberForce Competition Expectations.pdf": "https://cyberforce.energy.gov/wp-content/uploads/2026/01/2025-CyberForce-Competition-Expectations.pdf"
+  };
   function makeMc(topic, prompt, choices, answer, hint, setup, source) {
     return function () {
-      return { id: id(), topic: topic, type: "mc", prompt: prompt + "\n\n" + sourceLabel(source), choices: shuffle(choices), answer: answer, hint: hint, setup: setup, calc: { ti: "Review the definition in the guide." }, source: source };
+      return { id: id(), topic: topic, type: "mc", prompt: prompt, choices: shuffle(choices), answer: answer, hint: hint, setup: setup, calc: { ti: "Review the definition in the guide." }, source: source };
     };
   }
   function makeNum(topic, prompt, answer, hint, setup, source, tolerance) {
     return function () {
-      return { id: id(), topic: topic, type: "numeric", prompt: prompt + "\n\n" + sourceLabel(source), answer: num(answer), tolerance: tolerance == null ? 0.01 : tolerance, hint: hint, setup: setup, calc: { ti: "Enter the arithmetic in your calculator." }, source: source };
+      return { id: id(), topic: topic, type: "numeric", prompt: prompt, answer: num(answer), tolerance: tolerance == null ? 0.01 : tolerance, hint: hint, setup: setup, calc: { ti: "Enter the arithmetic in your calculator." }, source: source };
     };
   }
   function makeShort(topic, prompt, answers, hint, setup, source) {
     return function () {
       var accepted = Array.isArray(answers) ? answers : [answers];
-      return { id: id(), topic: topic, type: "short", prompt: prompt + "\n\n" + sourceLabel(source), answers: accepted, answer: accepted[0], hint: hint, setup: setup, calc: { ti: "Use the exact term from the guide." }, source: source };
+      return { id: id(), topic: topic, type: "short", prompt: prompt, answers: accepted, answer: accepted[0], hint: hint, setup: setup, calc: { ti: "Use the exact term from the guide." }, source: source };
     };
   }
 
@@ -180,7 +182,8 @@
       hint: hint1, setup: q.setup || "", clarify: overview + "\n\n" + (q.hint || "Review the guide definition.") + "\n\nThen choose the answer that best fits the evidence.",
       has_hint1: true, has_hint2: Boolean(q.setup), has_hint3: Boolean(calc), has_hint: true, has_setup: Boolean(q.setup || calc), has_clarify: true,
       unit: q.unit || "", choices: q.type === "mc" ? q.choices : undefined, placeholder: q.type === "flashcard" || q.type === "short" ? "Type the term" : undefined,
-      source: q.source
+      source: q.source,
+      source_url: SOURCE_URLS[q.source] || ""
     };
   }
   function setBossTheme() {}

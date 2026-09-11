@@ -115,6 +115,7 @@
     finalBossBtn: document.getElementById("btn-final-boss"),
     bossFace: document.getElementById("boss-face"),
     prompt: document.getElementById("q-prompt"),
+    source: document.getElementById("q-source"),
     topic: document.getElementById("q-topic"),
     hint1: document.getElementById("q-hint1"),
     hint2: document.getElementById("q-hint2"),
@@ -2026,6 +2027,28 @@
     showQuestion(full);
   }
 
+  function renderQuestionSource(source, url) {
+    if (!els.source) return;
+    els.source.textContent = "";
+    if (!source) {
+      els.source.hidden = true;
+      return;
+    }
+    els.source.appendChild(document.createTextNode("Source: "));
+    if (url) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = source;
+      link.title = "Open the source PDF";
+      els.source.appendChild(link);
+    } else {
+      els.source.appendChild(document.createTextNode(source));
+    }
+    els.source.hidden = false;
+  }
+
   function showQuestion(full) {
     const pub = Q.publicQuestion(full);
     state.fullQuestion = full;
@@ -2050,6 +2073,7 @@
       hideBossFace();
     }
     setMathText(els.prompt, pub.prompt);
+    renderQuestionSource(pub.source, pub.source_url);
     setMathText(els.hint1, pub.hint1 || "", true);
     setMathText(els.hint2, pub.hint2 || "", true);
     setMathText(els.hint3ti, pub.hint3_ti || "", true, "ti");
