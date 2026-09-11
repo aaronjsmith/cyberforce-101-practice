@@ -1222,6 +1222,7 @@
   }
 
   function maybePromptBossFight(p) {
+    if (!els.finalBossBtn || els.finalBossBtn.hidden) return;
     if (bossInviteOpen) return;
     if (state.mode === "finalboss" && state.boss && state.boss.active) return;
     p = p || P.getProgressView();
@@ -4465,6 +4466,8 @@
       }
     }
     if (els.finalBossBtn) els.finalBossBtn.hidden = features.boss === false;
+    const readinessGroup = document.querySelector(".topic-group-readiness");
+    if (readinessGroup) readinessGroup.hidden = features.boss === false;
   }
 
   function start() {
@@ -4473,7 +4476,7 @@
     applyAssessmentFeatures();
     hideBossFace();
     state.nourishWeekId = readStoredNourishWeek();
-    if (restoreBossRunFromStorage()) {
+    if (els.finalBossBtn && !els.finalBossBtn.hidden && restoreBossRunFromStorage()) {
       state.mode = "finalboss";
     } else {
       try {

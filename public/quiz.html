@@ -39,8 +39,16 @@
       <button class="topic" data-topic="teachme" type="button" data-i18n="mode_teachme">Teach me</button>
       <button class="topic" data-topic="nourish" type="button" id="btn-nourish" data-i18n="mode_nourish">Nourish and strengthen</button>
       <button class="topic" data-topic="flashcards" type="button" data-i18n="mode_flashcards">Flashcards</button>
-      <button class="topic topic-boss" data-topic="finalboss" type="button" id="btn-final-boss" data-i18n="mode_finalboss_practice">⚡ Final readiness check</button>
       <div class="topic-list" id="topic-list"></div>
+      <section class="topic-group topic-group-readiness" aria-labelledby="readiness-group-heading">
+        <h3 class="topic-group-heading" id="readiness-group-heading">
+          <span data-i18n="mastery_heading">Readiness</span>
+          <em>final check</em>
+        </h3>
+        <div class="topic-group-children">
+          <button class="topic topic-boss topic-sub" data-topic="finalboss" type="button" id="btn-final-boss" data-i18n="mode_finalboss_practice">⚡ Final readiness check</button>
+        </div>
+      </section>
       <div class="progress-actions">
         <a class="linkish" id="notecard-link" href="index.html#sources" target="_blank" rel="noopener" data-i18n="btn_notecard">Quick reference</a>
         <p class="muted notecard-note" data-i18n="disclaimer">Source-backed study prompts from the CyberForce 101 Library.</p>

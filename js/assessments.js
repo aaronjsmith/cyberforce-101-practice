@@ -13,7 +13,7 @@
     bossEmojiWin: "🛡️",
     bossEmojiDead: "✅",
     available: true,
-    features: { flashcards: true, notecard: false, boss: true, nourish: false }
+    features: { flashcards: true, notecard: false, boss: false, nourish: false }
   };
   window.MAT107_ASSESSMENT_ID = "overview";
   window.Mat107Course = {
