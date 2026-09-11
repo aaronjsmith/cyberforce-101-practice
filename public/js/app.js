@@ -1230,6 +1230,7 @@
     els.singleField.hidden = false;
     els.figure.hidden = true;
     els.figure.innerHTML = "";
+    els.figure.className = "figure";
     els.input.value = "";
     els.input.placeholder = "";
     els.input.disabled = false;
@@ -1757,6 +1758,10 @@
     if (focus) input.focus();
   }
 
+  function isChoiceQuestion(type) {
+    return type === "mc" || type === "attack";
+  }
+
   function getAnswerPayload() {
     if (state.publicQ && state.publicQ.type === "multi") {
       return collectMultiAnswers();
@@ -2049,6 +2054,85 @@
     els.source.hidden = false;
   }
 
+  function simulationNode(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function renderTerminalSimulation(terminal) {
+    els.figure.className = "figure simulation-figure";
+    els.figure.hidden = false;
+    els.figure.innerHTML = "";
+    var card = simulationNode("section", "terminal-sim terminal-sim--" + (terminal.os || "linux"));
+    card.setAttribute("aria-label", (terminal.title || "Simulated terminal") + " training scenario");
+    var head = simulationNode("div", "terminal-sim-head");
+    head.appendChild(simulationNode("span", "terminal-dots", "● ● ●"));
+    head.appendChild(simulationNode("span", "terminal-title", terminal.title || "Simulated terminal"));
+    head.appendChild(simulationNode("span", "terminal-os", String(terminal.os || "shell").toUpperCase()));
+    card.appendChild(head);
+    var body = simulationNode("div", "terminal-sim-body");
+    (terminal.lines || []).forEach(function (line) {
+      var row = simulationNode("div", "terminal-line");
+      row.appendChild(simulationNode("span", "terminal-prompt", line.prompt || ""));
+      if (line.command) row.appendChild(simulationNode("span", "terminal-command", line.command));
+      body.appendChild(row);
+      (line.output || []).forEach(function (output) {
+        body.appendChild(simulationNode("div", "terminal-output", output));
+      });
+    });
+    card.appendChild(body);
+    els.figure.appendChild(card);
+  }
+
+  function renderAttackSimulation(simulation) {
+    els.figure.className = "figure simulation-figure";
+    els.figure.hidden = false;
+    els.figure.innerHTML = "";
+    var card = simulationNode("section", "attack-sim attack-sim--" + (simulation.kind || "alert"));
+    card.setAttribute("aria-label", "Simulated " + (simulation.kind || "security") + " interface");
+    var head = simulationNode("div", "attack-sim-head");
+    head.appendChild(simulationNode("span", "attack-app", simulation.app || "Security console"));
+    head.appendChild(simulationNode("span", "attack-badge", simulation.badge || "TRAINING"));
+    card.appendChild(head);
+    if (simulation.kind === "email") {
+      var mail = simulationNode("div", "attack-mail");
+      mail.appendChild(simulationNode("div", "attack-kicker", "INBOX / MESSAGE PREVIEW"));
+      mail.appendChild(simulationNode("div", "attack-subject", simulation.subject || ""));
+      mail.appendChild(simulationNode("div", "attack-sender", simulation.sender || ""));
+      mail.appendChild(simulationNode("p", "attack-body", simulation.body || ""));
+      var link = simulationNode("button", "attack-link", simulation.linkLabel || "Open link");
+      link.type = "button";
+      var notice = simulationNode("span", "attack-link-notice", "");
+      link.addEventListener("click", function () {
+        notice.textContent = "Training simulation: inspect the destination; never enter credentials.";
+        link.classList.add("is-inspected");
+      });
+      var linkRow = simulationNode("div", "attack-link-row");
+      linkRow.appendChild(link);
+      linkRow.appendChild(simulationNode("code", "attack-url", simulation.linkUrl || ""));
+      mail.appendChild(linkRow);
+      mail.appendChild(notice);
+      (simulation.details || []).forEach(function (detail) { mail.appendChild(simulationNode("div", "attack-detail", detail)); });
+      card.appendChild(mail);
+    } else {
+      var alert = simulationNode("div", "attack-alert");
+      var alertTop = simulationNode("div", "attack-alert-top");
+      alertTop.appendChild(simulationNode("span", "attack-kicker", "DETECTION / IDENTITY"));
+      alertTop.appendChild(simulationNode("span", "attack-time", simulation.time || ""));
+      alert.appendChild(alertTop);
+      alert.appendChild(simulationNode("h3", "attack-title", simulation.title || ""));
+      alert.appendChild(simulationNode("p", "attack-subtitle", simulation.subtitle || ""));
+      var facts = simulationNode("div", "attack-facts");
+      (simulation.facts || []).forEach(function (fact) { facts.appendChild(simulationNode("div", "attack-fact", fact)); });
+      alert.appendChild(facts);
+      alert.appendChild(simulationNode("div", "attack-recommendation", simulation.action || ""));
+      card.appendChild(alert);
+    }
+    els.figure.appendChild(card);
+  }
+
   function showQuestion(full) {
     const pub = Q.publicQuestion(full);
     state.fullQuestion = full;
@@ -2107,7 +2191,9 @@
       els.figure.innerHTML = pub.svg;
     }
 
-    if (pub.type === "mc") {
+    if (pub.terminal) renderTerminalSimulation(pub.terminal);
+    else if (pub.simulation) renderAttackSimulation(pub.simulation);
+    if (isChoiceQuestion(pub.type)) {
       els.choices.hidden = false;
       pub.choices.forEach((c) => {
         const btn = document.createElement("button");
@@ -2329,7 +2415,7 @@
     if (els.remix) els.remix.hidden = false;
     els.check.textContent = t("btn_check_retry");
 
-    if (state.publicQ.type === "mc") {
+    if (isChoiceQuestion(state.publicQ.type)) {
       [...els.choices.children].forEach((btn) => {
         // Keep the wrong pick marked; allow another choice.
         if (!btn.classList.contains("wrong")) {
@@ -2384,7 +2470,7 @@
             topic: label,
           });
         }
-        if (state.publicQ.type === "mc") {
+        if (isChoiceQuestion(state.publicQ.type)) {
           [...els.choices.children].forEach((btn) => {
             btn.disabled = true;
             if (choiceRaw(btn) === expected) btn.classList.add("right");
@@ -2396,7 +2482,7 @@
       const credited = P.awardRetryCredit(state.fullQuestion);
       els.feedback.className = "feedback ok";
       els.feedback.textContent = t("feedback_retry_ok");
-      if (state.publicQ.type === "mc") {
+      if (isChoiceQuestion(state.publicQ.type)) {
         [...els.choices.children].forEach((btn) => {
           btn.disabled = true;
           if (choiceRaw(btn) === expected) btn.classList.add("right");
@@ -2408,7 +2494,7 @@
 
     els.feedback.className = "feedback no";
     setWrongExpectedFeedback(expected || state.lastExpected);
-    if (state.publicQ.type === "mc") {
+    if (isChoiceQuestion(state.publicQ.type)) {
       [...els.choices.children].forEach((btn) => {
         btn.disabled = true;
         if (choiceRaw(btn) === (expected || state.lastExpected)) {
@@ -2441,7 +2527,7 @@
     if (state.mode === "finalboss" && state.boss.active) {
       const [ok, expected] = Q.checkAnswer(state.fullQuestion, answer);
       els.feedback.hidden = false;
-      if (state.publicQ.type === "mc") {
+      if (isChoiceQuestion(state.publicQ.type)) {
         [...els.choices.children].forEach((btn) => {
           btn.disabled = true;
           if (ok && choiceRaw(btn) === expected) btn.classList.add("right");
@@ -2460,7 +2546,7 @@
     if (state.mode === "teachme") {
       const [ok, expected] = Q.checkAnswer(state.fullQuestion, answer);
       els.feedback.hidden = false;
-      if (state.publicQ.type === "mc") {
+      if (isChoiceQuestion(state.publicQ.type)) {
         [...els.choices.children].forEach((btn) => {
           btn.disabled = true;
           if (ok && choiceRaw(btn) === expected) btn.classList.add("right");
@@ -2535,7 +2621,7 @@
         progress: progress,
         mastered: masteredNote,
       });
-      if (state.publicQ.type === "mc") {
+      if (isChoiceQuestion(state.publicQ.type)) {
         [...els.choices.children].forEach((btn) => {
           btn.disabled = true;
           if (choiceRaw(btn) === result.expected) btn.classList.add("right");
@@ -2547,7 +2633,7 @@
     }
 
     // First miss → recovery chance for 5% (do not reveal expected yet).
-    if (state.publicQ.type === "mc") {
+    if (isChoiceQuestion(state.publicQ.type)) {
       [...els.choices.children].forEach((btn) => {
         btn.disabled = true;
         if (choiceRaw(btn) === String(answer)) btn.classList.add("wrong");

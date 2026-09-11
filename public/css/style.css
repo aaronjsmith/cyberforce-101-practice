@@ -2881,3 +2881,250 @@ body.excel-col-resizing * {
     font-size: 0.88rem;
   }
 }
+
+
+/* Simulated command-line and attack evidence surfaces */
+.simulation-figure {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0 1.15rem;
+}
+
+.terminal-sim,
+.attack-sim {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(26, 43, 58, 0.09);
+}
+
+.terminal-sim {
+  background: #101820;
+  color: #d9e6e8;
+  font-family: var(--mono);
+}
+
+.terminal-sim--windows {
+  background: #0b1726;
+}
+
+.terminal-sim-head,
+.attack-sim-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.5rem;
+  padding: 0 0.85rem;
+  color: #eaf4f3;
+  background: #1d2a32;
+  font-family: var(--font);
+  font-size: 0.78rem;
+}
+
+.terminal-sim--windows .terminal-sim-head {
+  background: #18314b;
+}
+
+.terminal-dots {
+  color: #7ed6b5;
+  font-size: 0.64rem;
+  letter-spacing: 0.18rem;
+  white-space: nowrap;
+}
+
+.terminal-title {
+  flex: 1;
+  font-weight: 700;
+}
+
+.terminal-os {
+  color: #9bb7bc;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+}
+
+.terminal-sim-body {
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.83rem;
+  line-height: 1.6;
+}
+
+.terminal-line {
+  min-width: max-content;
+  white-space: pre;
+}
+
+.terminal-prompt {
+  color: #7ee2b4;
+}
+
+.terminal-sim--windows .terminal-prompt {
+  color: #8dc7ff;
+}
+
+.terminal-command {
+  color: #fff;
+}
+
+.terminal-output {
+  min-width: max-content;
+  padding-left: 0.2rem;
+  color: #aebfc1;
+  white-space: pre;
+}
+
+.attack-sim {
+  background: #f7fafb;
+  color: var(--ink);
+}
+
+.attack-sim-head {
+  justify-content: space-between;
+  background: #24384b;
+}
+
+.attack-app {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.attack-badge {
+  padding: 0.18rem 0.45rem;
+  border: 1px solid rgba(255, 220, 144, 0.55);
+  border-radius: 999px;
+  color: #ffe2a0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.attack-mail,
+.attack-alert {
+  padding: 1rem;
+}
+
+.attack-kicker {
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.attack-subject,
+.attack-title {
+  margin: 0.55rem 0 0.35rem;
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.attack-sender,
+.attack-subtitle,
+.attack-body {
+  margin: 0.35rem 0;
+  color: var(--muted);
+}
+
+.attack-body {
+  max-width: 58rem;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.attack-link-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0.85rem 0 0.35rem;
+}
+
+.attack-link {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.58rem 0.8rem;
+  background: #d95d4f;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.attack-link:hover,
+.attack-link.is-inspected {
+  background: #b7463a;
+}
+
+.attack-url {
+  color: #9c3f35;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.attack-link-notice {
+  display: block;
+  min-height: 1.2em;
+  color: #9c3f35;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.attack-detail {
+  display: inline-block;
+  margin: 0.35rem 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.attack-alert-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.attack-time {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+}
+
+.attack-facts {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.9rem 0;
+}
+
+.attack-fact {
+  padding: 0.6rem 0.7rem;
+  border-left: 3px solid #e3a83a;
+  background: #fff;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.attack-recommendation {
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  background: #e8f3ef;
+  color: #22624f;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .terminal-sim-body {
+    padding: 0.8rem;
+    font-size: 0.74rem;
+  }
+
+  .attack-mail,
+  .attack-alert {
+    padding: 0.8rem;
+  }
+
+  .attack-link-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

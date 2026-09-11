@@ -20,6 +20,13 @@
     .cf-card { padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow); }
     .cf-card h3 { margin: 0 0 .35rem; font-family: var(--display); }
     .cf-card p { margin: 0; color: var(--muted); line-height: 1.5; font-size: .92rem; }
+    .cf-card a { display: inline-flex; margin-top: .8rem; color: var(--accent-deep); font-weight: 700; font-size: .86rem; text-decoration-thickness: .08em; text-underline-offset: .16em; }
+    .cf-card a:hover { color: var(--accent); }
+    .cf-week { display: flex; align-items: center; gap: .55rem; margin-bottom: .55rem; color: var(--accent-deep); font: 600 .74rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .cf-week span { display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 50%; background: rgba(20,124,193,.12); color: var(--accent-deep); }
+    .cf-resource-links { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+    .cf-resource-links a { margin-top: 0; padding: .65rem .8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); text-decoration: none; }
+    .cf-resource-links a:hover { border-color: var(--accent); background: #fff; }
     .cf-source { margin-top: 2rem; padding: 1rem 1.1rem; border-left: 4px solid #147cc1; background: rgba(20,124,193,.08); border-radius: 0 10px 10px 0; color: var(--muted); line-height: 1.5; }
   </style>
 </head>
@@ -47,6 +54,55 @@
         <article class="cf-card"><h3>Python & automation</h3><p>Python data types, control flow, PowerShell objects, and Node-RED flows.</p></article>
       </div>
       <p class="cf-source">Source text imported from the IT 333r project at <code>src/cyberforce-library-content.js</code>. This practice app is for authorized learning environments and does not replace the original guides.</p>
+    </section>
+    <section class="cf-section" id="resources">
+      <h2>CS50 Cybersecurity resources</h2>
+      <p class="muted">Extend the practice lab with Harvard’s free OpenCourseWare course. It is designed for technical and non-technical learners and moves from account security to data, systems, software, and privacy.</p>
+      <div class="cf-grid">
+        <article class="cf-card">
+          <div class="cf-week"><span>00</span> Week 0</div>
+          <h3>Securing accounts</h3>
+          <p>Authentication, passwords, MFA, credential stuffing, phishing, social engineering, password managers, and passkeys.</p>
+          <a href="https://cs50.harvard.edu/cybersecurity/weeks/0/" target="_blank" rel="noopener">Open week 0 →</a>
+        </article>
+        <article class="cf-card">
+          <div class="cf-week"><span>01</span> Week 1</div>
+          <h3>Securing data</h3>
+          <p>Hashing, encryption, RSA, key exchange, digital signatures, full-disk encryption, ransomware, and secure deletion.</p>
+          <a href="https://cs50.harvard.edu/cybersecurity/weeks/1/" target="_blank" rel="noopener">Open week 1 →</a>
+        </article>
+        <article class="cf-card">
+          <div class="cf-week"><span>02</span> Week 2</div>
+          <h3>Securing systems</h3>
+          <p>HTTPS and TLS, VPNs, SSH, ports, firewalls, packet sniffing, malware, and denial-of-service attacks.</p>
+          <a href="https://cs50.harvard.edu/cybersecurity/weeks/2/" target="_blank" rel="noopener">Open week 2 →</a>
+        </article>
+        <article class="cf-card">
+          <div class="cf-week"><span>03</span> Week 3</div>
+          <h3>Securing software</h3>
+          <p>XSS, SQL and command injection, CSRF, server-side validation, buffer overflows, CVEs, and vulnerability scoring.</p>
+          <a href="https://cs50.harvard.edu/cybersecurity/weeks/3/" target="_blank" rel="noopener">Open week 3 →</a>
+        </article>
+        <article class="cf-card">
+          <div class="cf-week"><span>04</span> Week 4</div>
+          <h3>Preserving privacy</h3>
+          <p>Browser history, tracking cookies, fingerprinting, private browsing, DNS privacy, Tor, VPNs, and location permissions.</p>
+          <a href="https://cs50.harvard.edu/cybersecurity/weeks/4/" target="_blank" rel="noopener">Open week 4 →</a>
+        </article>
+        <article class="cf-card">
+          <div class="cf-week"><span>→</span> Keep going</div>
+          <h3>Apply the material</h3>
+          <p>Work through the assignments, then analyze a recent real-world security or privacy failure in a narrated final-project presentation.</p>
+          <a href="https://cs50.harvard.edu/cybersecurity/project/" target="_blank" rel="noopener">View final project →</a>
+        </article>
+      </div>
+      <div class="cf-resource-links" aria-label="CS50 Cybersecurity links">
+        <a href="https://cs50.harvard.edu/cybersecurity/" target="_blank" rel="noopener">Course home</a>
+        <a href="https://cs50.harvard.edu/cybersecurity/assignments/" target="_blank" rel="noopener">Assignments</a>
+        <a href="https://cs50.harvard.edu/cybersecurity/communities/" target="_blank" rel="noopener">Communities &amp; Q&amp;A</a>
+        <a href="https://cs50.edx.org/cybersecurity" target="_blank" rel="noopener">Optional verified track</a>
+      </div>
+      <p class="cf-source">Course topics and links are adapted from <a href="https://cs50.harvard.edu/cybersecurity/" target="_blank" rel="noopener">CS50’s Introduction to Cybersecurity</a> OpenCourseWare. Use the original course pages for the complete lectures, notes, assignments, and current course requirements.</p>
     </section>
   </main>
   <footer class="site-footer"><p>CyberForce 101 · Practice Lab</p></footer>
