@@ -134,8 +134,20 @@
       <h2 data-i18n="mastery_heading">Mastery</h2>
       <p class="muted" data-i18n="mastery_blurb">Need 10 unaided corrects per topic. Hints never count.</p>
       <div class="shared-score-banner" id="shared-score-banner" hidden role="status">
-        <strong data-i18n="shared_score_title">Shared score snapshot</strong>
+        <span class="shared-score-kicker" data-i18n="shared_score_kicker">STUDENT SCORE REPORT</span>
+        <strong data-i18n="shared_score_title">CyberForce 101 · Student report card</strong>
         <p id="shared-score-meta"></p>
+        <div class="shared-score-observations">
+          <h3 data-i18n="shared_score_observations">Observations</h3>
+          <article class="shared-score-observation">
+            <h4 data-i18n="shared_score_competition_title">Competition Readiness</h4>
+            <p id="shared-score-competition-observation"></p>
+          </article>
+          <article class="shared-score-observation">
+            <h4 data-i18n="shared_score_focus_title">Suggested focus</h4>
+            <p id="shared-score-focus-observation"></p>
+          </article>
+        </div>
         <a class="linkish" id="shared-score-practice-link" href="quiz.html" data-i18n="shared_score_practice">Open practice quiz</a>
       </div>
       <div id="mastery-pie" class="mastery-pie" aria-live="polite"></div>

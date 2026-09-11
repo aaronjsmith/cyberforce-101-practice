@@ -160,6 +160,8 @@
     shareScoreStatus: document.getElementById("share-score-status"),
     sharedScoreBanner: document.getElementById("shared-score-banner"),
     sharedScoreMeta: document.getElementById("shared-score-meta"),
+    sharedScoreCompetition: document.getElementById("shared-score-competition-observation"),
+    sharedScoreFocus: document.getElementById("shared-score-focus-observation"),
     mastery: null,
     masteryPie: document.getElementById("mastery-pie"),
     clarifyBtn: document.getElementById("btn-clarify"),
@@ -851,6 +853,68 @@
     return Number.isNaN(date.getTime()) ? "unknown" : date.toLocaleString();
   }
 
+  function getSharedScoreObservations(score) {
+    const coreIds = [
+      "competition",
+      "foundations",
+      "networking",
+      "systems",
+      "defense",
+      "cyberforce_tools",
+      "crypto",
+      "web_security",
+      "automation",
+    ];
+    const rows = Object.keys(score.topics || {})
+      .map((key) => {
+        const item = score.topics[key];
+        return {
+          key: key,
+          label: item.label || key,
+          mastery: Math.max(0, Math.min(100, Number(item.mastery) || 0)),
+        };
+      })
+      .filter((row) => row.label);
+    const coreRows = coreIds
+      .map((key) => rows.find((row) => row.key === key))
+      .filter(Boolean);
+    const termMastery = coreRows.length
+      ? Math.round(coreRows.reduce((sum, row) => sum + row.mastery, 0) / coreRows.length)
+      : Math.round(Number(score.overall_mastery) || 0);
+    const coreMastered = coreRows.filter((row) => row.mastery >= 100).length;
+    let competition;
+    if (!score.total_attempted) {
+      competition = "There is not enough answered-question evidence to assess knowledge of competition terms yet.";
+    } else if (termMastery >= 80) {
+      competition =
+        "Strong competition readiness: the student demonstrates knowledge of core competition terms at " +
+        termMastery +
+        "% average mastery across " +
+        coreRows.length +
+        " core tracks, with " +
+        coreMastered +
+        " mastered.";
+    } else if (termMastery >= 60) {
+      competition =
+        "Developing competition readiness: knowledge of core competition terms is at " +
+        termMastery +
+        "% average mastery across " +
+        coreRows.length +
+        " core tracks. More unaided practice should build consistency.";
+    } else {
+      competition =
+        "Foundational competition readiness: the snapshot shows " +
+        termMastery +
+        "% average mastery of core competition terms. Focus on recognizing and applying the vocabulary before timed competition work.";
+    }
+    const weakest = rows.slice().sort((a, b) => a.mastery - b.mastery).slice(0, 3);
+    const focus = weakest.length
+      ? "Recommended focus: reinforce " +
+        weakest.map((row) => row.label).join(", ") +
+        "—these are the lowest-mastery tracks in this snapshot."
+      : "No track-level mastery data is available for a focus recommendation.";
+    return { competition: competition, focus: focus };
+  }
   function updateSharedScoreBanner() {
     if (!els.sharedScoreBanner) return;
     if (!state.sharedScore) {
@@ -870,6 +934,9 @@
         total: state.sharedScore.topic_count,
         created: formatSharedScoreTime(state.sharedScore.updated_at),
       });
+      const observations = getSharedScoreObservations(state.sharedScore);
+      if (els.sharedScoreCompetition) els.sharedScoreCompetition.textContent = observations.competition;
+      if (els.sharedScoreFocus) els.sharedScoreFocus.textContent = observations.focus;
     }
   }
 
@@ -4481,6 +4548,10 @@
       if (state.sharedScore) document.body.classList.add("shared-score-view");
     } catch (e) {
       state.sharedScore = null;
+    }
+    if (state.sharedScore) {
+      refreshProgress();
+      return;
     }
     state.nourishWeekId = readStoredNourishWeek();
     try {

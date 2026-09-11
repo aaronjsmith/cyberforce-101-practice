@@ -531,6 +531,43 @@ body.shared-score-view .share-score-button,
 body.shared-score-view .share-score-status {
   display: none;
 }
+.shared-score-kicker {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.shared-score-observations {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(26, 35, 50, 0.12);
+}
+.shared-score-observations h3 {
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 1rem;
+}
+.shared-score-observation {
+  margin-top: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: rgba(255, 255, 255, 0.55);
+}
+.shared-score-observation h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+.shared-score-observation p {
+  margin: 0.28rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
 .shared-score-banner {
   margin: 0.85rem 0 1rem;
   padding: 0.75rem 0.8rem;
