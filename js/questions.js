@@ -18,6 +18,8 @@
   var RETRY_CREDIT = 0.05;
   var MASTER = 10;
   var seq = 0;
+  var generatorQueues = {};
+  var lastGeneratorIndexes = {};
 
   function id() { seq += 1; return "cf-" + seq; }
   function shuffle(items) {
@@ -123,10 +125,23 @@
   function generateQuestion(topic) {
     var list = topic === "flashcards" ? FLASHCARDS : GENERATORS[topic];
     if (!list || !list.length) list = GENERATORS.foundations;
-    var maker = pick(list);
+    var queueKey = topic === "flashcards" ? "flashcards" : topic;
+    var queue = generatorQueues[queueKey];
+    if (!queue || !queue.length) {
+      queue = shuffle(list.map(function (_, index) { return index; }));
+      if (list.length > 1 && lastGeneratorIndexes[queueKey] === queue[0]) {
+        var first = queue[0];
+        queue[0] = queue[1];
+        queue[1] = first;
+      }
+      generatorQueues[queueKey] = queue;
+    }
+    var generatorIndex = queue.shift();
+    lastGeneratorIndexes[queueKey] = generatorIndex;
+    var maker = list[generatorIndex];
     var q = maker();
     q._gen = maker;
-    q._genKey = topic + ":" + list.indexOf(maker);
+    q._genKey = topic + ":" + generatorIndex;
     return q;
   }
   function remixQuestion(question) {
