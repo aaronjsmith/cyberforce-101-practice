@@ -40,15 +40,6 @@
       <button class="topic" data-topic="nourish" type="button" id="btn-nourish" data-i18n="mode_nourish">Nourish and strengthen</button>
       <button class="topic" data-topic="flashcards" type="button" data-i18n="mode_flashcards">Flashcards</button>
       <div class="topic-list" id="topic-list"></div>
-      <section class="topic-group topic-group-readiness" aria-labelledby="readiness-group-heading">
-        <h3 class="topic-group-heading" id="readiness-group-heading">
-          <span data-i18n="mastery_heading">Readiness</span>
-          <em>final check</em>
-        </h3>
-        <div class="topic-group-children">
-          <button class="topic topic-boss topic-sub" data-topic="finalboss" type="button" id="btn-final-boss" data-i18n="mode_finalboss_practice">⚡ Final readiness check</button>
-        </div>
-      </section>
       <div class="progress-actions">
         <a class="linkish" id="notecard-link" href="index.html#sources" target="_blank" rel="noopener" data-i18n="btn_notecard">Quick reference</a>
         <p class="muted notecard-note" data-i18n="disclaimer">Source-backed study prompts from the CyberForce 101 Library.</p>
@@ -62,7 +53,6 @@
 
     <section class="panel quiz">
       <div class="quiz-meta">
-        <span class="boss-face" id="boss-face" hidden aria-hidden="true">😈</span>
         <div class="quiz-meta-row">
           <div class="quiz-meta-left">
             <span class="pill" id="q-topic">—</span>
@@ -217,37 +207,6 @@
       <div class="excel-tip" id="excel-tip"></div>
       <div class="excel-grid-wrap">
         <table class="excel-grid" id="excel-scratch-grid"></table>
-      </div>
-    </div>
-  </div>
-
-  <div id="boss-invite-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="boss-invite-title">
-    <div class="modal-backdrop" id="boss-invite-backdrop" tabindex="-1"></div>
-    <div class="modal-card boss-invite-card">
-      <header class="modal-head">
-        <h2 id="boss-invite-title" data-i18n="boss_invite_title">Gadianton Robber</h2>
-        <button type="button" class="modal-close" id="boss-invite-close" aria-label="Close" data-i18n-aria="boss_invite_close_aria">×</button>
-      </header>
-      <p class="boss-invite-face" aria-hidden="true">😈</p>
-      <p class="modal-body" id="boss-invite-msg" data-i18n="boss_invite_mastered">Every topic is mastered at 10/10. A Gadianton Robber threatens Zarahemla — fight him now?</p>
-      <div class="modal-actions">
-        <button type="button" class="ghost" id="boss-invite-later" data-i18n="boss_invite_later">Not now</button>
-        <button type="button" class="primary" id="boss-invite-fight" data-i18n="boss_invite_fight">Fight</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="boss-retreat-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="boss-retreat-title">
-    <div class="modal-backdrop" id="boss-retreat-backdrop" tabindex="-1"></div>
-    <div class="modal-card boss-invite-card">
-      <header class="modal-head">
-        <h2 id="boss-retreat-title" data-i18n="boss_retreat_title">Retreat</h2>
-        <button type="button" class="modal-close" id="boss-retreat-close" aria-label="Close" data-i18n-aria="boss_retreat_close_aria">×</button>
-      </header>
-      <p class="boss-invite-face" aria-hidden="true">🏃</p>
-      <p class="modal-body" id="boss-retreat-msg" data-i18n="boss_retreat_msg">You need to retreat and perfect this skill before facing the Gadianton Robber again.</p>
-      <div class="modal-actions">
-        <button type="button" class="primary" id="boss-retreat-ok" data-i18n="boss_retreat_ok">Train now</button>
       </div>
     </div>
   </div>

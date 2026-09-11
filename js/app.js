@@ -113,8 +113,8 @@
 
   const els = {
     topicList: document.getElementById("topic-list"),
-    finalBossBtn: document.getElementById("btn-final-boss"),
-    bossFace: document.getElementById("boss-face"),
+
+
     prompt: document.getElementById("q-prompt"),
     source: document.getElementById("q-source"),
     topic: document.getElementById("q-topic"),
@@ -172,17 +172,17 @@
     excelFormula: document.getElementById("excel-formula-input"),
     excelTip: document.getElementById("excel-tip"),
     excelGrid: document.getElementById("excel-scratch-grid"),
-    bossInviteModal: document.getElementById("boss-invite-modal"),
-    bossInviteMsg: document.getElementById("boss-invite-msg"),
-    bossInviteFight: document.getElementById("boss-invite-fight"),
-    bossInviteLater: document.getElementById("boss-invite-later"),
-    bossInviteClose: document.getElementById("boss-invite-close"),
-    bossInviteBackdrop: document.getElementById("boss-invite-backdrop"),
-    bossRetreatModal: document.getElementById("boss-retreat-modal"),
-    bossRetreatMsg: document.getElementById("boss-retreat-msg"),
-    bossRetreatOk: document.getElementById("boss-retreat-ok"),
-    bossRetreatClose: document.getElementById("boss-retreat-close"),
-    bossRetreatBackdrop: document.getElementById("boss-retreat-backdrop"),
+
+
+
+
+
+
+
+
+
+
+
     nourishBtn: document.getElementById("btn-nourish"),
     nourishWeekModal: document.getElementById("nourish-week-modal"),
     nourishWeekChoices: document.getElementById("nourish-week-choices"),
@@ -1014,9 +1014,7 @@
   state.collapsedTopicGroups = readCollapsedTopicGroups();
   syncTopicGroupAvailability();
 
-  const BOSS_INVITE_KEY = "mat107-boss-invite-dismissed";
   const NOURISH_WEEK_KEY = "mat107-nourish-week";
-  let bossInviteOpen = false;
   let nourishWeekOpen = false;
   let nourishModeBeforePrompt = "smart";
 
@@ -1175,71 +1173,6 @@
     state.mode = "nourish";
     setModeButtons();
     openNourishWeekModal();
-  }
-
-  function dismissBossInvite() {
-    if (!bossInviteOpen) return;
-    bossInviteOpen = false;
-    if (els.bossInviteModal) els.bossInviteModal.hidden = true;
-    try {
-      sessionStorage.setItem(BOSS_INVITE_KEY, "1");
-    } catch (e) {
-      /* ignore */
-    }
-  }
-
-  function acceptBossInvite() {
-    if (!bossInviteOpen) return;
-    bossInviteOpen = false;
-    if (els.bossInviteModal) els.bossInviteModal.hidden = true;
-    const p = P.getProgressView();
-    state.mode = "finalboss";
-    state.boss = {
-      active: false,
-      queue: [],
-      index: 0,
-      status: null,
-      real: false,
-    };
-    setModeButtons();
-    updateFinalBossButton(p);
-    loadQuestion();
-  }
-
-  function openBossInviteModal() {
-    if (!els.bossInviteModal) return;
-    if (els.bossInviteMsg) {
-      els.bossInviteMsg.textContent = tTheme("boss_invite_mastered");
-    }
-    bossInviteOpen = true;
-    els.bossInviteModal.hidden = false;
-    const focusBtn = els.bossInviteFight || els.bossInviteLater;
-    if (focusBtn) {
-      setTimeout(function () {
-        focusBtn.focus();
-      }, 0);
-    }
-  }
-
-  function maybePromptBossFight(p) {
-    if (!els.finalBossBtn || els.finalBossBtn.hidden) return;
-    if (bossInviteOpen) return;
-    if (state.mode === "finalboss" && state.boss && state.boss.active) return;
-    p = p || P.getProgressView();
-    if (!p || !p.all_mastered) {
-      try {
-        sessionStorage.removeItem(BOSS_INVITE_KEY);
-      } catch (e) {
-        /* ignore */
-      }
-      return;
-    }
-    try {
-      if (sessionStorage.getItem(BOSS_INVITE_KEY) === "1") return;
-    } catch (e) {
-      /* ignore */
-    }
-    openBossInviteModal();
   }
 
   function hideHintControls() {
@@ -2037,6 +1970,7 @@
   }
 
   function loadQuestion() {
+    if (state.mode === "finalboss") state.mode = "smart";
     resetUI();
     els.next.textContent = t("btn_next");
 
@@ -2144,13 +2078,9 @@
       return;
     }
 
-    if (Q.setBossTheme) Q.setBossTheme(state.mode === "finalboss");
+    if (Q.setBossTheme) Q.setBossTheme(false);
     const full = Q.generateQuestion(topic);
     showQuestion(full);
-    // After a question loads (e.g. post-mastery Next), offer the boss fight.
-    if (state.mode !== "finalboss") {
-      maybePromptBossFight();
-    }
   }
 
   function loadRemix() {
@@ -2160,7 +2090,7 @@
     }
     // Abandon current item without skip penalty — intentional reshuffle.
     resetUI();
-    if (Q.setBossTheme) Q.setBossTheme(state.mode === "finalboss");
+    if (Q.setBossTheme) Q.setBossTheme(false);
     const full = Q.remixQuestion(state.fullQuestion);
     showQuestion(full);
   }
@@ -2913,6 +2843,7 @@
     btn.addEventListener("click", () => {
       if (btn.disabled) return;
       const nextMode = btn.dataset.topic;
+      if (nextMode === "finalboss") return;
       state.remixAfterFail = false;
 
       // Leaving an active fight pauses it (progress is persisted).
@@ -4424,12 +4355,6 @@
     if (I18n && I18n.has && I18n.has(titleKey)) {
       document.title = t(titleKey);
     }
-    const inviteTitle = document.getElementById("boss-invite-title");
-    if (inviteTitle) inviteTitle.textContent = tTheme("boss_invite_title");
-    if (els.bossInviteModal) {
-      const inviteFace = els.bossInviteModal.querySelector(".boss-invite-face");
-      if (inviteFace) inviteFace.textContent = bossEmoji("live");
-    }
   }
 
   function applyAssessmentFeatures() {
@@ -4465,47 +4390,41 @@
         reviewLink.hidden = true;
       }
     }
-    if (els.finalBossBtn) els.finalBossBtn.hidden = features.boss === false;
-    const readinessGroup = document.querySelector(".topic-group-readiness");
-    if (readinessGroup) readinessGroup.hidden = features.boss === false;
+
   }
 
   function start() {
     if (I18n && I18n.applyStatic) I18n.applyStatic();
     applyAssessmentBranding();
     applyAssessmentFeatures();
-    hideBossFace();
+    state.mode = state.mode === "finalboss" ? "smart" : state.mode;
     state.nourishWeekId = readStoredNourishWeek();
-    if (els.finalBossBtn && !els.finalBossBtn.hidden && restoreBossRunFromStorage()) {
-      state.mode = "finalboss";
-    } else {
-      try {
-        const params = new URLSearchParams(location.search);
-        if (
-          params.get("mode") === "nourish" &&
-          els.nourishBtn &&
-          !els.nourishBtn.hidden
-        ) {
-          if (state.nourishWeekId) {
-            state.mode = "nourish";
-            refreshProgress();
-            setModeButtons();
-            loadQuestion();
-            els.feedback.hidden = false;
-            els.feedback.className = "feedback ok";
-            els.feedback.textContent = t("nourish_started", {
-              week: nourishWeekLabel(state.nourishWeekId),
-            });
-            return;
-          }
-          promptNourishWeek();
+    try {
+      const params = new URLSearchParams(location.search);
+      if (
+        params.get("mode") === "nourish" &&
+        els.nourishBtn &&
+        !els.nourishBtn.hidden
+      ) {
+        if (state.nourishWeekId) {
+          state.mode = "nourish";
           refreshProgress();
           setModeButtons();
+          loadQuestion();
+          els.feedback.hidden = false;
+          els.feedback.className = "feedback ok";
+          els.feedback.textContent = t("nourish_started", {
+            week: nourishWeekLabel(state.nourishWeekId),
+          });
           return;
         }
-      } catch (e) {
-        /* ignore */
+        promptNourishWeek();
+        refreshProgress();
+        setModeButtons();
+        return;
       }
+    } catch (e) {
+      /* ignore */
     }
     refreshProgress();
     setModeButtons();
