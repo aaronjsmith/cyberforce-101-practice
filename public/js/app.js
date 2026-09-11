@@ -160,7 +160,6 @@
     shareScoreStatus: document.getElementById("share-score-status"),
     sharedScoreBanner: document.getElementById("shared-score-banner"),
     sharedScoreMeta: document.getElementById("shared-score-meta"),
-    sharedScoreClose: document.getElementById("shared-score-close"),
     mastery: null,
     masteryPie: document.getElementById("mastery-pie"),
     clarifyBtn: document.getElementById("btn-clarify"),
@@ -435,6 +434,7 @@
 
     els.masteryPie.querySelectorAll(".mastery-topic").forEach((item) => {
       item.addEventListener("click", () => {
+        if (state.sharedScore) return;
         const key = item.getAttribute("data-topic");
         if (!key) return;
         state.mode = key;
@@ -3126,13 +3126,6 @@
   if (els.shareScoreBtn) {
     els.shareScoreBtn.addEventListener("click", copyShareScoreLink);
   }
-  if (els.sharedScoreClose) {
-    els.sharedScoreClose.addEventListener("click", () => {
-      state.sharedScore = null;
-      updateSharedScoreBanner();
-      refreshProgress();
-    });
-  }
   if (els.save) {
     els.save.addEventListener("click", () => {
       try {
@@ -4485,6 +4478,7 @@
     try {
       const token = new URLSearchParams(location.search).get("score");
       state.sharedScore = P.decodeShareScoreToken ? P.decodeShareScoreToken(token) : null;
+      if (state.sharedScore) document.body.classList.add("shared-score-view");
     } catch (e) {
       state.sharedScore = null;
     }

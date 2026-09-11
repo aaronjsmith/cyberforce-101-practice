@@ -514,6 +514,23 @@ a.linkish {
   text-align: right;
 }
 
+
+body.shared-score-view .layout {
+  display: block;
+  max-width: 960px;
+}
+body.shared-score-view .topics,
+body.shared-score-view .quiz {
+  display: none;
+}
+body.shared-score-view .mastery {
+  max-width: 860px;
+  margin: 0 auto;
+}
+body.shared-score-view .share-score-button,
+body.shared-score-view .share-score-status {
+  display: none;
+}
 .shared-score-banner {
   margin: 0.85rem 0 1rem;
   padding: 0.75rem 0.8rem;

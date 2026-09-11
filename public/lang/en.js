@@ -54,7 +54,7 @@ window.QUIZ_LANG_PACKS.en = {
   share_score_copy_prompt: "Copy this share link:",
   shared_score_title: "Shared score snapshot",
   shared_score_meta: "Grade {grade} · {answered} answered · {streak} current streak · {mastered}/{total} tracks mastered · created {created}",
-  shared_score_close: "Use my local progress",
+  shared_score_practice: "Open practice quiz",
   btn_save: "Save progress",
   btn_load: "Load progress",
   btn_reset: "Reset progress",
