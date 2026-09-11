@@ -502,6 +502,18 @@ a.linkish {
 
 .linkish.danger { color: var(--warn); }
 
+.share-score-button {
+  display: block;
+  margin: 0.3rem 0 0 auto;
+  font-size: 0.68rem;
+}
+.stats-bar .share-score-status {
+  display: block;
+  margin: 0.2rem 0 0 auto;
+  max-width: 9rem;
+  text-align: right;
+}
+
 .shared-score-banner {
   margin: 0.85rem 0 1rem;
   padding: 0.75rem 0.8rem;

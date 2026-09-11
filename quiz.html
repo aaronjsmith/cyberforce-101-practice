@@ -23,7 +23,7 @@
     </div>
     <div class="top-right">
       <div class="stats-bar">
-        <div class="stat"><span class="stat-val" id="stat-accuracy">—</span><span class="stat-lbl" data-i18n="stat_grade">Grade</span></div>
+        <div class="stat"><span class="stat-val" id="stat-accuracy">—</span><span class="stat-lbl" data-i18n="stat_grade">Grade</span><button class="linkish share-score-button" id="btn-share-score" type="button" data-i18n="btn_share_score">Share score</button><span class="share-score-status" id="share-score-status" role="status" aria-live="polite" hidden></span></div>
         <div class="stat"><span class="stat-val" id="stat-streak">0</span><span class="stat-lbl" data-i18n="stat_streak">Unaided streak</span></div>
         <div class="stat"><span class="stat-val" id="stat-total">0</span><span class="stat-lbl" data-i18n="stat_answered">Answered</span></div>
       </div>
@@ -44,8 +44,6 @@
         <a class="linkish" id="notecard-link" href="index.html#sources" target="_blank" rel="noopener" data-i18n="btn_notecard">Quick reference</a>
         <p class="muted notecard-note" data-i18n="disclaimer">Source-backed study prompts from the CyberForce 101 Library.</p>
         <a class="linkish" id="review-link" href="assessment3-review.html" target="_blank" rel="noopener" hidden data-i18n="btn_review">Assessment 3 review</a>
-        <button class="linkish" id="btn-share-score" type="button" data-i18n="btn_share_score">Share score</button>
-        <p class="share-score-status" id="share-score-status" role="status" aria-live="polite" hidden></p>
         <button class="linkish" id="btn-save" type="button" data-i18n="btn_save">Save progress</button>
         <button class="linkish" id="btn-load" type="button" data-i18n="btn_load">Load progress</button>
         <input id="progress-file" type="file" accept="application/json,.json" hidden />
