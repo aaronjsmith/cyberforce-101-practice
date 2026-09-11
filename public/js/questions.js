@@ -54,6 +54,7 @@
   var generatorQueues = {};
   var lastGeneratorIndexes = {};
   var variationCounters = {};
+  var practiceFramesEnabled = true;
   var PRACTICE_FRAMES = {
     cyberforce: [
       "Moroni Systems has raised a neon Title of Liberty and wants the strongest defense:",
@@ -449,6 +450,7 @@
       (function (base, frame) {
         expanded.push(function () {
           var question = base();
+          question._basePrompt = question.prompt;
           question.prompt = frame + String.fromCharCode(10, 10) + question.prompt;
           return question;
         });
@@ -500,6 +502,8 @@
     lastGeneratorIndexes[topic] = generatorIndex;
     var maker = list[generatorIndex];
     var q = maker();
+    if (!practiceFramesEnabled && q._basePrompt) q.prompt = q._basePrompt;
+    delete q._basePrompt;
     q = varyQuestion(q, topic);
     q._gen = maker;
     q._genKey = topic + ":" + generatorIndex;
@@ -546,7 +550,7 @@
       source_url: SOURCE_URLS[q.source] || ""
     };
   }
-  function setBossTheme() {}
+  function setBossTheme(isBoss) { practiceFramesEnabled = !Boolean(isBoss); }
 
   window.QuizQuestions = {
     get TOPICS() { return TOPICS; },
