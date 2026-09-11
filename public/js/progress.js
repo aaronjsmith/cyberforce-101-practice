@@ -1173,6 +1173,101 @@
     return true;
   }
 
+  function encodeShareScore(value) {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function decodeShareScoreToken(token) {
+    if (!token || typeof token !== "string" || token.length > 24000) return null;
+    try {
+      const padded = token.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((token.length + 3) % 4);
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const data = JSON.parse(new TextDecoder().decode(bytes));
+      const score = data && data.score;
+      if (!data || data.version !== 1 || !score || typeof score !== "object") return null;
+      const topics = {};
+      const rawTopics = score.topics && typeof score.topics === "object" ? score.topics : {};
+      Object.keys(rawTopics).slice(0, 100).forEach(function (key) {
+        const item = rawTopics[key];
+        if (!item || typeof item !== "object") return;
+        topics[key] = {
+          label: typeof item.label === "string" ? item.label.slice(0, 160) : key,
+          unaided_correct: Math.max(0, Number(item.unaided_correct) || 0),
+          unaided_needed: Math.max(1, Number(item.unaided_needed) || MASTER),
+          mastery: Math.max(0, Math.min(100, Number(item.mastery) || 0)),
+          mastered: Boolean(item.mastered),
+        };
+      });
+      return {
+        shared: true,
+        version: 1,
+        assessment_id: typeof data.assessment_id === "string" ? data.assessment_id : "",
+        total_correct: Math.max(0, Number(score.total_correct) || 0),
+        total_attempted: Math.max(0, Number(score.total_attempted) || 0),
+        total_credit: Math.max(0, Number(score.total_credit) || 0),
+        total_unaided_correct: Math.max(0, Number(score.total_unaided_correct) || 0),
+        accuracy: Math.max(0, Number(score.grade) || Number(score.accuracy) || 0),
+        streak: Math.max(0, Number(score.streak) || 0),
+        best_streak: Math.max(0, Number(score.best_streak) || 0),
+        mastered_topics: Math.max(0, Number(score.mastered_topics) || 0),
+        topic_count: Math.max(0, Number(score.topic_count) || Object.keys(topics).length),
+        overall_mastery: Math.max(0, Number(score.overall_mastery) || 0),
+        unaided_to_master: Math.max(1, Number(score.unaided_to_master) || MASTER),
+        topics: topics,
+        struggle: { top: [] },
+        history: [],
+        updated_at: typeof data.created_at === "string" ? data.created_at : null,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getShareScorePayload() {
+    const p = getProgressView();
+    const topics = {};
+    Object.keys(p.topics || {}).forEach(function (key) {
+      const item = p.topics[key];
+      topics[key] = {
+        label: item.label,
+        unaided_correct: item.unaided_correct,
+        unaided_needed: item.unaided_needed,
+        mastery: item.mastery,
+        mastered: item.mastered,
+      };
+    });
+    return {
+      version: 1,
+      assessment_id: ASSESSMENT_ID,
+      created_at: new Date().toISOString(),
+      score: {
+        grade: p.accuracy,
+        total_correct: p.total_correct,
+        total_attempted: p.total_attempted,
+        total_credit: p.total_credit,
+        total_unaided_correct: p.total_unaided_correct,
+        streak: p.streak,
+        best_streak: p.best_streak,
+        mastered_topics: p.mastered_topics,
+        topic_count: p.topic_count,
+        overall_mastery: p.overall_mastery,
+        unaided_to_master: p.unaided_to_master,
+        topics: topics,
+      },
+    };
+  }
+
+  function createShareScoreUrl(baseUrl) {
+    const url = new URL(baseUrl || window.location.href, window.location.href);
+    url.searchParams.delete("mode");
+    url.searchParams.set("score", encodeShareScore(JSON.stringify(getShareScorePayload())));
+    return url.toString();
+  }
   function exportProgress() {
     const p = load();
     return {
@@ -1300,6 +1395,9 @@
     awardRetryCredit: awardRetryCredit,
     reset: reset,
     resetTopic: resetTopic,
+    getShareScorePayload: getShareScorePayload,
+    createShareScoreUrl: createShareScoreUrl,
+    decodeShareScoreToken: decodeShareScoreToken,
     exportProgress: exportProgress,
     importProgress: importProgress,
     downloadProgressFile: downloadProgressFile,

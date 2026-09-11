@@ -502,6 +502,31 @@ a.linkish {
 
 .linkish.danger { color: var(--warn); }
 
+.shared-score-banner {
+  margin: 0.85rem 0 1rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid rgba(29, 78, 216, 0.22);
+  border-radius: 0.65rem;
+  background: rgba(29, 78, 216, 0.06);
+}
+.shared-score-banner[hidden] {
+  display: none;
+}
+.shared-score-banner strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+.shared-score-banner p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.shared-score-banner .linkish {
+  margin-top: 0.55rem;
+  font-size: 0.76rem;
+}
 .progress-actions {
   display: flex;
   flex-direction: column;
@@ -512,6 +537,15 @@ a.linkish {
 
 .progress-actions .linkish {
   margin-top: 0;
+}
+
+.share-score-status {
+  margin: -0.15rem 0 0.15rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.share-score-status[hidden] {
+  display: none;
 }
 
 .progress-actions .notecard-note {

@@ -102,6 +102,7 @@
     /** Course week focus for Nourish and Strengthen (weeks12 | weeks34 | weeks57). */
     nourishWeekId: null,
     collapsedTopicGroups: {},
+    sharedScore: null,
     boss: {
       active: false,
       queue: [],
@@ -155,6 +156,11 @@
     accuracy: document.getElementById("stat-accuracy"),
     streak: document.getElementById("stat-streak"),
     total: document.getElementById("stat-total"),
+    shareScoreBtn: document.getElementById("btn-share-score"),
+    shareScoreStatus: document.getElementById("share-score-status"),
+    sharedScoreBanner: document.getElementById("shared-score-banner"),
+    sharedScoreMeta: document.getElementById("shared-score-meta"),
+    sharedScoreClose: document.getElementById("shared-score-close"),
     mastery: null,
     masteryPie: document.getElementById("mastery-pie"),
     clarifyBtn: document.getElementById("btn-clarify"),
@@ -839,11 +845,78 @@
     });
   }
 
+  function formatSharedScoreTime(value) {
+    if (!value) return "unknown";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "unknown" : date.toLocaleString();
+  }
+
+  function updateSharedScoreBanner() {
+    if (!els.sharedScoreBanner) return;
+    if (!state.sharedScore) {
+      els.sharedScoreBanner.hidden = true;
+      return;
+    }
+    els.sharedScoreBanner.hidden = false;
+    if (els.sharedScoreMeta) {
+      const grade = state.sharedScore.total_attempted
+        ? state.sharedScore.accuracy + "%"
+        : "—";
+      els.sharedScoreMeta.textContent = t("shared_score_meta", {
+        grade: grade,
+        answered: state.sharedScore.total_attempted,
+        streak: state.sharedScore.streak,
+        mastered: state.sharedScore.mastered_topics,
+        total: state.sharedScore.topic_count,
+        created: formatSharedScoreTime(state.sharedScore.updated_at),
+      });
+    }
+  }
+
+  function setShareScoreStatus(message) {
+    if (!els.shareScoreStatus) return;
+    els.shareScoreStatus.textContent = message || "";
+    els.shareScoreStatus.hidden = !message;
+  }
+
+  function copyShareScoreLink() {
+    const url = P.createShareScoreUrl(location.href);
+    const copied = function () {
+      setShareScoreStatus(t("share_score_copied"));
+    };
+    const fallback = function () {
+      let ok = false;
+      const area = document.createElement("textarea");
+      area.value = url;
+      area.setAttribute("readonly", "true");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      try {
+        ok = document.execCommand("copy");
+      } catch (e) {
+        ok = false;
+      }
+      area.remove();
+      if (ok) copied();
+      else {
+        window.prompt(t("share_score_copy_prompt"), url);
+        setShareScoreStatus(url);
+      }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(copied).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
   function refreshProgress() {
     const p = P.getProgressView();
-    els.accuracy.textContent = p.total_attempted ? `${p.accuracy}%` : "—";
-    els.streak.textContent = p.streak;
-    els.total.textContent = p.total_attempted;
+    const display = state.sharedScore || p;
+    els.accuracy.textContent = display.total_attempted ? display.accuracy + "%" : "—";
+    els.streak.textContent = display.streak;
+    els.total.textContent = display.total_attempted;
 
     function topicButtonHtml(info) {
       const mark = info.mastered ? "✓ " : "";
@@ -951,7 +1024,8 @@
       });
     }
 
-    renderMasteryPie(p);
+    renderMasteryPie(display);
+    updateSharedScoreBanner();
     setModeButtons();
     updateFinalBossButton(p);
   }
@@ -3049,6 +3123,16 @@
     els.bossRetreatBackdrop.addEventListener("click", finishBossRetreat);
   }
 
+  if (els.shareScoreBtn) {
+    els.shareScoreBtn.addEventListener("click", copyShareScoreLink);
+  }
+  if (els.sharedScoreClose) {
+    els.sharedScoreClose.addEventListener("click", () => {
+      state.sharedScore = null;
+      updateSharedScoreBanner();
+      refreshProgress();
+    });
+  }
   if (els.save) {
     els.save.addEventListener("click", () => {
       try {
@@ -4398,6 +4482,12 @@
     applyAssessmentBranding();
     applyAssessmentFeatures();
     state.mode = state.mode === "finalboss" ? "smart" : state.mode;
+    try {
+      const token = new URLSearchParams(location.search).get("score");
+      state.sharedScore = P.decodeShareScoreToken ? P.decodeShareScoreToken(token) : null;
+    } catch (e) {
+      state.sharedScore = null;
+    }
     state.nourishWeekId = readStoredNourishWeek();
     try {
       const params = new URLSearchParams(location.search);
