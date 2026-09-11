@@ -32,6 +32,26 @@
     .cf-resource-links a { margin-top: 0; padding: .65rem .8rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); text-decoration: none; }
     .cf-resource-links a:hover { border-color: var(--accent); background: #fff; }
     .cf-source { margin-top: 2rem; padding: 1rem 1.1rem; border-left: 4px solid #147cc1; background: rgba(20,124,193,.08); border-radius: 0 10px 10px 0; color: var(--muted); line-height: 1.5; }
+    .cf-d3fend { position: relative; overflow: hidden; padding: clamp(1.3rem, 3vw, 2.4rem); border: 1px solid rgba(15,110,86,.22); border-radius: 22px; background: linear-gradient(135deg, rgba(255,255,255,.97), rgba(232,246,240,.88)); box-shadow: 0 24px 60px rgba(26,35,50,.1); }
+    .cf-d3fend::after { content: "D3"; position: absolute; right: .6rem; top: -1.4rem; color: rgba(15,110,86,.07); font: 700 11rem/.9 var(--display); pointer-events: none; }
+    .cf-d3fend > * { position: relative; z-index: 1; }
+    .cf-d3-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; }
+    .cf-d3-head h2 { margin-bottom: .35rem; }
+    .cf-d3-kicker { margin: 0 0 .45rem; color: #0f6e56; font: 600 .72rem var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .cf-d3-head p { max-width: 63ch; }
+    .cf-d3-stats { display: grid; grid-template-columns: repeat(3, minmax(9rem, 1fr)); gap: .7rem; margin: 1.4rem 0; }
+    .cf-d3-stat { padding: .8rem .9rem; border: 1px solid rgba(15,110,86,.16); border-radius: 12px; background: rgba(255,255,255,.72); }
+    .cf-d3-stat strong { display: block; color: #0f6e56; font: 700 1.55rem/1 var(--display); }
+    .cf-d3-stat span { display: block; margin-top: .25rem; color: var(--muted); font-size: .78rem; }
+    .cf-d3-path { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .45rem; margin: 1.1rem 0 1.4rem; }
+    .cf-d3-path span { display: grid; place-items: center; min-height: 2.5rem; padding: .35rem; border-radius: 9px; background: rgba(15,110,86,.1); color: #0f6e56; font: 600 .7rem var(--mono); text-align: center; }
+    .cf-d3-grid { grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); }
+    .cf-d3-card { background: rgba(255,255,255,.82); border-color: rgba(15,110,86,.18); }
+    .cf-d3-card .cf-week span { background: rgba(15,110,86,.13); color: #0f6e56; }
+    .cf-d3-card p { font-size: .88rem; }
+    .cf-d3-card .cf-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .75rem; }
+    .cf-d3-card .cf-tags span { padding: .22rem .42rem; border-radius: 999px; background: rgba(15,110,86,.08); color: #0f6e56; font: 600 .65rem var(--mono); }
+    .cf-d3fend .cf-resource-links a { border-color: rgba(15,110,86,.2); }
     @media (max-width: 900px) and (min-width: 761px) {
       .cf-hero-copy { padding-inline: 2rem; }
       .cf-hero h1 { font-size: clamp(2.7rem, 5vw, 3.8rem); }
@@ -171,6 +191,51 @@
         <a href="https://www.nist.gov/news-events/news/2026/04/nice-releases-nice-framework-components-v220" target="_blank" rel="noopener">v2.2.0 release notes</a>
       </div>
       <p class="cf-source">This lesson is an original study guide based on <a href="https://csrc.nist.gov/pubs/sp/800/181/r1/final" target="_blank" rel="noopener">NIST SP 800-181 Rev. 1</a>, the <a href="https://www.nist.gov/itl/applied-cybersecurity/nice/nice-framework-resource-center/about" target="_blank" rel="noopener">NICE Framework Resource Center</a>, and NIST's maintained <a href="https://www.nist.gov/itl/applied-cybersecurity/nice/nice-framework-resource-center/nice-framework-current-versions" target="_blank" rel="noopener">Current Versions</a>. Framework components are updated separately from the publication, so always check NIST for the latest release.</p>
+    </section>
+    <section class="cf-section" id="d3fend">
+      <div class="cf-d3fend">
+        <div class="cf-d3-head">
+          <div>
+            <p class="cf-d3-kicker">MITRE D3FEND™ · Knowledge graph of cybersecurity countermeasures</p>
+            <h2>D3FEND field guide</h2>
+            <p class="muted">A large defensive track built from the current D3FEND matrix. Learn to move from a modeled environment to hardened systems, useful detection, proportionate isolation, controlled deception, adversary eviction, and verified restoration.</p>
+          </div>
+          <a class="cf-hero-secondary" href="https://d3fend.mitre.org/" target="_blank" rel="noopener">Open the live D3FEND matrix →</a>
+        </div>
+        <div class="cf-d3-stats" aria-label="D3FEND track summary">
+          <div class="cf-d3-stat"><strong>7</strong><span>defensive tactics</span></div>
+          <div class="cf-d3-stat"><strong>12</strong><span>practice tracks in this lab</span></div>
+          <div class="cf-d3-stat"><strong>1.6.0</strong><span>matrix release referenced</span></div>
+        </div>
+        <div class="cf-d3-path" aria-label="D3FEND learning path">
+          <span>01 · Model</span><span>02 · Harden</span><span>03 · Detect</span><span>04 · Isolate</span><span>05 · Deceive</span><span>06 · Evict</span><span>07 · Restore</span>
+        </div>
+        <div class="cf-grid cf-d3-grid">
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>01</span> Start here</div><h3>Foundations</h3><p>Read D3FEND as a defensive knowledge graph, understand tactics versus techniques, and pair observed behavior with countermeasure thinking.</p><div class="cf-tags"><span>graph</span><span>tactics</span><span>coverage</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>02</span> See the system</div><h3>Model &amp; exposure</h3><p>Build asset, software, configuration, network, dependency, access, and risk models before deciding what to change.</p><div class="cf-tags"><span>inventory</span><span>mapping</span><span>risk</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>03</span> Raise the cost</div><h3>Harden countermeasures</h3><p>Practice application, credential, message, platform, and source-code hardening, from MFA and rotation to boot integrity and validation.</p><div class="cf-tags"><span>MFA</span><span>secure boot</span><span>validation</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>04</span> Find the signal</div><h3>Detect analytics</h3><p>Use file, identifier, message, network, platform, process, user, and physical monitoring to identify unauthorized activity.</p><div class="cf-tags"><span>hashes</span><span>traffic</span><span>lineage</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>05</span> Narrow the blast radius</div><h3>Isolate access &amp; content</h3><p>Explore network, process, content, file, policy, and physical isolation, including allowlists, mediation, quarantine, and OT variable restrictions.</p><div class="cf-tags"><span>allowlist</span><span>quarantine</span><span>OT</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>06</span> Make intrusion noisy</div><h3>Deceive with decoys</h3><p>Understand decoy environments, connected and standalone honeynets, decoy files, personas, credentials, and session tokens.</p><div class="cf-tags"><span>decoys</span><span>honeynets</span><span>high signal</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>07</span> Remove access</div><h3>Evict the adversary</h3><p>Choose between credential revocation, session termination, process suspension, process termination, object eviction, and host actions.</p><div class="cf-tags"><span>revoke</span><span>contain</span><span>evidence</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>08</span> Return to service</div><h3>Restore operations</h3><p>Plan verified recovery for access, credentials, network, configuration, databases, disk images, files, email, and software.</p><div class="cf-tags"><span>recovery</span><span>integrity</span><span>availability</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>09</span> Protect people</div><h3>Identity &amp; credentials</h3><p>Connect authentication, credential rotation, account permissions, behavior baselines, geolocation patterns, and authorization thresholds.</p><div class="cf-tags"><span>identity</span><span>baselines</span><span>access</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>10</span> Protect pathways</div><h3>Network defense patterns</h3><p>Map mediation, DNS allowlisting, traffic filtering, protocol anomalies, relay behavior, and the boundaries that shape communication.</p><div class="cf-tags"><span>DNS</span><span>mediation</span><span>anomaly</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>11</span> Protect code</div><h3>Endpoint &amp; application defense</h3><p>Study integrity monitoring, process analysis, control-flow integrity, trusted libraries, binary verification, and secret scrubbing.</p><div class="cf-tags"><span>processes</span><span>integrity</span><span>code</span></div></article>
+          <article class="cf-card cf-d3-card"><div class="cf-week"><span>12</span> Protect the mission</div><h3>OT, firmware &amp; physical defense</h3><p>Apply operating-mode monitoring, variable access restriction, firmware verification, physical access monitoring, locks, motion, and video.</p><div class="cf-tags"><span>ICS</span><span>firmware</span><span>physical</span></div></article>
+        </div>
+        <div class="cf-resource-links" aria-label="MITRE D3FEND resources">
+          <a href="https://d3fend.mitre.org/" target="_blank" rel="noopener">D3FEND matrix</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Model/" target="_blank" rel="noopener">Model tactic</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Harden/" target="_blank" rel="noopener">Harden tactic</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Detect/" target="_blank" rel="noopener">Detect tactic</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Isolate/" target="_blank" rel="noopener">Isolate tactic</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Deceive/" target="_blank" rel="noopener">Deceive tactic</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Evict/" target="_blank" rel="noopener">Evict tactic</a>
+          <a href="https://d3fend.mitre.org/tactic/d3f:Restore/" target="_blank" rel="noopener">Restore tactic</a>
+        </div>
+        <p class="cf-source">This course outline paraphrases the public MITRE D3FEND™ 1.6.0 matrix and its tactic pages. Use the live matrix for authoritative definitions, relationships, identifiers, synonyms, and updates. This practice material is for authorized learning environments.</p>
+      </div>
     </section>
     <section class="cf-section" id="soc2">
       <h2>SOC 2 foundations course</h2>
