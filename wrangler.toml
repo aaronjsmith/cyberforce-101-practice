@@ -6,6 +6,10 @@ compatibility_date = "2026-09-10"
 directory = "./public"
 binding = "ASSETS"
 
+[[services]]
+binding = "CYBER_RANGE"
+service = "cyber-range"
+
 [[routes]]
 pattern = "cyber.ensign.quest"
 custom_domain = true
